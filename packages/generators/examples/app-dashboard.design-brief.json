@@ -1,0 +1,14 @@
+{
+  "surface": "app",
+  "style": "modern-saas",
+  "tone": "clear-technical",
+  "density": "medium",
+  "accent": "blue",
+  "visual_ruleset": "v1",
+  "primary_goal": "operational-clarity",
+  "constraints": [
+    "high-density-readable",
+    "single-primary-action-per-area",
+    "clear-status-hierarchy"
+  ]
+}

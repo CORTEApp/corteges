@@ -1,0 +1,12 @@
+{
+  "status": "PASS",
+  "stats": {
+    "block_count": 19,
+    "registry_items": 2,
+    "page_routes": 9,
+    "route_handlers": 1,
+    "internal_hrefs": 10
+  },
+  "issues": [],
+  "warnings": []
+}

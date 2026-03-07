@@ -1,0 +1,18 @@
+{
+  "route": "/dashboard",
+  "surface": "app",
+  "sections": [
+    {
+      "id": "page-header",
+      "goal": "context"
+    },
+    {
+      "id": "kpi-row",
+      "goal": "summary"
+    },
+    {
+      "id": "data-table",
+      "goal": "operational-list"
+    }
+  ]
+}

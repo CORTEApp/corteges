@@ -1,0 +1,30 @@
+{
+  "route": "/",
+  "surface": "marketing",
+  "sections": [
+    {
+      "id": "hero",
+      "goal": "positioning"
+    },
+    {
+      "id": "logo-strip",
+      "goal": "trust"
+    },
+    {
+      "id": "feature-grid",
+      "goal": "capabilities"
+    },
+    {
+      "id": "process-steps",
+      "goal": "how-it-works"
+    },
+    {
+      "id": "social-proof",
+      "goal": "credibility"
+    },
+    {
+      "id": "cta-banner",
+      "goal": "conversion"
+    }
+  ]
+}

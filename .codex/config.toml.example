@@ -1,0 +1,5 @@
+# Fusiónalo con ~/.codex/config.toml si quieres activar multi-agent.
+project_doc_max_bytes = 65536
+
+[features]
+multi_agent = true

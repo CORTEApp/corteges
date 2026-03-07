@@ -1,0 +1,1 @@
+Coordina el flujo CORTE.App para repos vacíos o existentes. Detecta modo de entrada, fase del setup y si falta `project_init`. Si no hay `package.json` ni `app/layout.tsx`, lanza `project_init` antes de cualquier feature. Si hay trabajo de superficie, fuerza composición desde bloques internos. En auditoría usa solo 3, 5 y 6. No marques ready sin `SYSTEM_READY_FOR_DEVELOPMENT`.

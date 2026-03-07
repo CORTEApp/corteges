@@ -1,0 +1,14 @@
+{
+  "surface": "marketing",
+  "style": "modern-saas",
+  "tone": "clear-technical",
+  "density": "medium",
+  "accent": "blue",
+  "visual_ruleset": "v1",
+  "primary_goal": "book-demo",
+  "constraints": [
+    "no-generic-ai-look",
+    "single-primary-cta",
+    "high-contrast"
+  ]
+}

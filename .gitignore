@@ -1,0 +1,9 @@
+node_modules
+.next
+.env*
+!.env.local.example
+.supabase
+__pycache__
+.pytest_cache
+.ai/_audit_bundle
+tmp_next_bootstrap

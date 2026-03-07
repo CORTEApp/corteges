@@ -1,0 +1,43 @@
+{
+  "default_language": "typescript",
+  "ui_base": "tailwind+shadcn-ui",
+  "create_next_app": {
+    "command": [
+      "npx",
+      "create-next-app@latest",
+      ".tmp_next_bootstrap",
+      "--ts",
+      "--eslint",
+      "--tailwind",
+      "--app",
+      "--use-npm",
+      "--import-alias",
+      "@/*"
+    ]
+  },
+  "shadcn": {
+    "init_command": [
+      "npx",
+      "shadcn@latest",
+      "init",
+      "-y"
+    ],
+    "components": [
+      "button",
+      "card",
+      "input",
+      "label",
+      "separator",
+      "badge",
+      "sheet",
+      "dropdown-menu",
+      "avatar",
+      "table",
+      "textarea",
+      "skeleton",
+      "dialog",
+      "sonner"
+    ]
+  },
+  "overlay_root": "scaffolds/nextjs/files"
+}

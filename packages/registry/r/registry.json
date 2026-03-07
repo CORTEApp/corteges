@@ -1,0 +1,30 @@
+{
+  "name": "@corteapp/registry",
+  "homepage": "https://internal.corteapp.local",
+  "items": [
+    {
+      "name": "hero-saas-01",
+      "type": "registry:block",
+      "title": "Hero SaaS 01",
+      "description": "Hero principal para landings SaaS modernas",
+      "files": [
+        {
+          "path": "packages/blocks/marketing/hero-saas-01.tsx",
+          "type": "registry:component"
+        }
+      ]
+    },
+    {
+      "name": "app-shell-sidebar-01",
+      "type": "registry:block",
+      "title": "App Shell Sidebar 01",
+      "description": "Shell de aplicación con navegación lateral",
+      "files": [
+        {
+          "path": "packages/blocks/app/app-shell-sidebar-01.tsx",
+          "type": "registry:component"
+        }
+      ]
+    }
+  ]
+}

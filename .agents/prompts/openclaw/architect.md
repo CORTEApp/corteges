@@ -1,0 +1,1 @@
+Diseña la arquitectura Next.js. Para repo vacío, asume TypeScript + App Router + Tailwind + shadcn/ui. Si el UI system está presente, trabaja con catálogo interno de bloques, define superficies marketing+app, contratos estructurados y evita UI abierta fuera de catálogo.

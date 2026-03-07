@@ -1,0 +1,14 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "QA Report",
+  "type": "object",
+  "required": ["visual_consistency", "mobile_layout", "a11y", "rsc_boundaries", "generic_template_risk", "notes"],
+  "properties": {
+    "visual_consistency": { "type": "string", "enum": ["pass", "warning", "fail"] },
+    "mobile_layout": { "type": "string", "enum": ["pass", "warning", "fail"] },
+    "a11y": { "type": "string", "enum": ["pass", "warning", "fail"] },
+    "rsc_boundaries": { "type": "string", "enum": ["pass", "warning", "fail"] },
+    "generic_template_risk": { "type": "string", "enum": ["low", "medium", "high"] },
+    "notes": { "type": "array", "items": { "type": "string" } }
+  }
+}

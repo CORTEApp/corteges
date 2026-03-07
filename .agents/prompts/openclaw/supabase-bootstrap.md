@@ -1,0 +1,1 @@
+Eres dueño del setup completo. Ejecuta `project_init` sobre repo no vacío con `tools/project_init.py`, prepara env, wiring SSR, bootstrap inicial y readiness. Si el pack incluye UI fusionada, comprueba rutas mínimas de marketing+app y usa `tools/ui_system_audit.py` cuando toque. No marques ready si faltan artefactos base.

@@ -1,0 +1,343 @@
+{
+  "meta": {
+    "name": "corteapp-block-catalog",
+    "version": "1.0.0",
+    "style_family": "modern-saas"
+  },
+  "blocks": [
+    {
+      "id": "hero-saas-01",
+      "surface": "marketing",
+      "kind": "section",
+      "status": "implemented",
+      "slots": [
+        "eyebrow",
+        "title",
+        "subtitle",
+        "primaryCta",
+        "secondaryCta"
+      ],
+      "routeSuitability": [
+        "/",
+        "/features",
+        "/pricing"
+      ],
+      "antiPatterns": [
+        "too-long-title",
+        "three-ctas",
+        "vague-subtitle"
+      ]
+    },
+    {
+      "id": "logo-strip-01",
+      "surface": "marketing",
+      "kind": "section",
+      "status": "implemented",
+      "slots": [
+        "title",
+        "items"
+      ],
+      "routeSuitability": [
+        "/",
+        "/casos"
+      ],
+      "antiPatterns": [
+        "too-many-logos",
+        "logos-with-different-styles"
+      ]
+    },
+    {
+      "id": "feature-grid-01",
+      "surface": "marketing",
+      "kind": "section",
+      "status": "implemented",
+      "slots": [
+        "title",
+        "subtitle",
+        "items"
+      ],
+      "routeSuitability": [
+        "/",
+        "/features"
+      ],
+      "antiPatterns": [
+        "too-many-items",
+        "no-priority",
+        "same-copy-repeated"
+      ]
+    },
+    {
+      "id": "feature-split-01",
+      "surface": "marketing",
+      "kind": "section",
+      "status": "stub",
+      "slots": [
+        "eyebrow",
+        "title",
+        "subtitle",
+        "bullets",
+        "visual"
+      ],
+      "routeSuitability": [
+        "/features"
+      ],
+      "antiPatterns": [
+        "decorative-visual-only"
+      ]
+    },
+    {
+      "id": "process-steps-01",
+      "surface": "marketing",
+      "kind": "section",
+      "status": "stub",
+      "slots": [
+        "title",
+        "items"
+      ],
+      "routeSuitability": [
+        "/",
+        "/casos",
+        "/contacto"
+      ],
+      "antiPatterns": [
+        "too-many-steps",
+        "abstract-steps"
+      ]
+    },
+    {
+      "id": "social-proof-01",
+      "surface": "marketing",
+      "kind": "section",
+      "status": "stub",
+      "slots": [
+        "title",
+        "items"
+      ],
+      "routeSuitability": [
+        "/",
+        "/casos"
+      ],
+      "antiPatterns": [
+        "generic-testimonials"
+      ]
+    },
+    {
+      "id": "pricing-01",
+      "surface": "marketing",
+      "kind": "section",
+      "status": "stub",
+      "slots": [
+        "title",
+        "plans"
+      ],
+      "routeSuitability": [
+        "/pricing"
+      ],
+      "antiPatterns": [
+        "three-identical-plans"
+      ]
+    },
+    {
+      "id": "faq-01",
+      "surface": "marketing",
+      "kind": "section",
+      "status": "stub",
+      "slots": [
+        "title",
+        "items"
+      ],
+      "routeSuitability": [
+        "/pricing",
+        "/faq"
+      ],
+      "antiPatterns": [
+        "marketing-fluff"
+      ]
+    },
+    {
+      "id": "cta-banner-01",
+      "surface": "marketing",
+      "kind": "section",
+      "status": "implemented",
+      "slots": [
+        "title",
+        "subtitle",
+        "primaryCta"
+      ],
+      "routeSuitability": [
+        "/",
+        "/pricing",
+        "/features"
+      ],
+      "antiPatterns": [
+        "double-primary-cta"
+      ]
+    },
+    {
+      "id": "footer-01",
+      "surface": "marketing",
+      "kind": "section",
+      "status": "implemented",
+      "slots": [],
+      "routeSuitability": [
+        "*"
+      ],
+      "antiPatterns": []
+    },
+    {
+      "id": "app-shell-sidebar-01",
+      "surface": "app",
+      "kind": "shell",
+      "status": "implemented",
+      "slots": [
+        "brand",
+        "navItems",
+        "children"
+      ],
+      "routeSuitability": [
+        "/dashboard",
+        "/automatizaciones",
+        "/clientes",
+        "/settings"
+      ],
+      "antiPatterns": [
+        "too-many-nav-items",
+        "unclear-information-architecture"
+      ]
+    },
+    {
+      "id": "page-header-01",
+      "surface": "app",
+      "kind": "header",
+      "status": "implemented",
+      "slots": [
+        "title",
+        "subtitle",
+        "actions"
+      ],
+      "routeSuitability": [
+        "*"
+      ],
+      "antiPatterns": [
+        "too-many-actions"
+      ]
+    },
+    {
+      "id": "kpi-row-01",
+      "surface": "app",
+      "kind": "section",
+      "status": "implemented",
+      "slots": [
+        "items"
+      ],
+      "routeSuitability": [
+        "/dashboard"
+      ],
+      "antiPatterns": [
+        "more-than-6-kpis",
+        "no-priority"
+      ]
+    },
+    {
+      "id": "data-table-01",
+      "surface": "app",
+      "kind": "section",
+      "status": "implemented",
+      "slots": [
+        "columns",
+        "rows"
+      ],
+      "routeSuitability": [
+        "/dashboard",
+        "/clientes",
+        "/automatizaciones"
+      ],
+      "antiPatterns": [
+        "too-many-columns",
+        "no-responsive-plan"
+      ]
+    },
+    {
+      "id": "empty-state-01",
+      "surface": "app",
+      "kind": "state",
+      "status": "stub",
+      "slots": [
+        "title",
+        "description",
+        "primaryCta"
+      ],
+      "routeSuitability": [
+        "*"
+      ],
+      "antiPatterns": [
+        "empty-without-next-step"
+      ]
+    },
+    {
+      "id": "settings-form-01",
+      "surface": "app",
+      "kind": "form",
+      "status": "stub",
+      "slots": [
+        "title",
+        "fields"
+      ],
+      "routeSuitability": [
+        "/settings"
+      ],
+      "antiPatterns": [
+        "too-many-fields",
+        "unclear-grouping"
+      ]
+    },
+    {
+      "id": "card-grid-01",
+      "surface": "shared",
+      "kind": "layout",
+      "status": "stub",
+      "slots": [
+        "items"
+      ],
+      "routeSuitability": [
+        "*"
+      ],
+      "antiPatterns": [
+        "same-card-repeated"
+      ]
+    },
+    {
+      "id": "sheet-detail-01",
+      "surface": "shared",
+      "kind": "overlay",
+      "status": "stub",
+      "slots": [
+        "title",
+        "content"
+      ],
+      "routeSuitability": [
+        "*"
+      ],
+      "antiPatterns": [
+        "important-data-hidden"
+      ]
+    },
+    {
+      "id": "dialog-confirm-01",
+      "surface": "shared",
+      "kind": "overlay",
+      "status": "stub",
+      "slots": [
+        "title",
+        "description",
+        "confirmLabel"
+      ],
+      "routeSuitability": [
+        "*"
+      ],
+      "antiPatterns": [
+        "destructive-action-without-context"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Design Brief",
+  "type": "object",
+  "required": ["surface", "style", "tone", "density", "accent", "visual_ruleset", "primary_goal", "constraints"],
+  "properties": {
+    "surface": { "type": "string", "enum": ["marketing", "app"] },
+    "style": { "type": "string" },
+    "tone": { "type": "string" },
+    "density": { "type": "string", "enum": ["low", "medium", "high"] },
+    "accent": { "type": "string" },
+    "visual_ruleset": { "type": "string" },
+    "primary_goal": { "type": "string" },
+    "constraints": { "type": "array", "items": { "type": "string" } }
+  }
+}

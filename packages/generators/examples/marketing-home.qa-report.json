@@ -1,0 +1,11 @@
+{
+  "visual_consistency": "pass",
+  "mobile_layout": "warning",
+  "a11y": "warning",
+  "rsc_boundaries": "pass",
+  "generic_template_risk": "low",
+  "notes": [
+    "Revisar ancho de headline en móvil",
+    "Definir versión accesible del FAQ al implementarlo"
+  ]
+}

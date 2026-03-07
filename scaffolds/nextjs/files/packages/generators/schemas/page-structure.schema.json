@@ -1,0 +1,21 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Page Structure",
+  "type": "object",
+  "required": ["route", "surface", "sections"],
+  "properties": {
+    "route": { "type": "string" },
+    "surface": { "type": "string", "enum": ["marketing", "app"] },
+    "sections": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "goal"],
+        "properties": {
+          "id": { "type": "string" },
+          "goal": { "type": "string" }
+        }
+      }
+    }
+  }
+}

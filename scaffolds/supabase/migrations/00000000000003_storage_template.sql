@@ -1,0 +1,5 @@
+-- TEMPLATE de storage. Actívalo solo si el proyecto necesita archivos.
+-- Ejemplo de bucket privado:
+-- insert into storage.buckets (id, name, public)
+-- values ('company-files', 'company-files', false)
+-- on conflict (id) do nothing;

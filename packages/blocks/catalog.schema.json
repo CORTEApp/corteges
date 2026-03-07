@@ -1,0 +1,28 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Block Catalog",
+  "type": "object",
+  "required": ["meta", "blocks"],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "required": ["name", "version", "style_family"]
+    },
+    "blocks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "surface", "kind", "status", "slots", "routeSuitability", "antiPatterns"],
+        "properties": {
+          "id": { "type": "string" },
+          "surface": { "type": "string", "enum": ["marketing", "app", "shared"] },
+          "kind": { "type": "string" },
+          "status": { "type": "string", "enum": ["implemented", "stub", "planned"] },
+          "slots": { "type": "array", "items": { "type": "string" } },
+          "routeSuitability": { "type": "array", "items": { "type": "string" } },
+          "antiPatterns": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    }
+  }
+}
