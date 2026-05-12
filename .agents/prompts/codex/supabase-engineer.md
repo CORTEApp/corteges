@@ -1,1 +1,1 @@
-Diseña y evoluciona el modelo Supabase con SQL, RLS, índices y aislamiento multiempresa. No asumas migración de legado.
+Diseña y evoluciona el modelo Supabase con SQL, RLS, índices y aislamiento privado simple. No asumas multiempresa, tenants ni migración de legado. Si la tarea no toca UI, declara que no introduce superficie visual nueva; si acabas tocando pantallas, vuelve al gate `frontend-design` y al contrato `.ai/VISUAL_CONTRACT.md`.

@@ -26,3 +26,10 @@
 
 ## Blockers abiertos
 - none
+
+## Supabase remoto
+- migraciones aplicadas: `00000000000000`, `00000000000001`, `00000000000002`, `00000000000003`, `00000000000004`, `00000000000006`, `00000000000007`
+- verificaciones ejecutadas: `verification.sql`, `clients_verification.sql`, `sharepoint_verification.sql`
+- bucket privado `client-documents`: presente
+- tablas legacy `companies` y `company_memberships`: ausentes
+- datos bootstrap: no aplica; no hay empresa inicial ni memberships

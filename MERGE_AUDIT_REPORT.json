@@ -3,9 +3,11 @@
   "stats": {
     "block_count": 19,
     "registry_items": 2,
-    "page_routes": 9,
-    "route_handlers": 1,
-    "internal_hrefs": 10
+    "visual_contract": "checked",
+    "visual_runtime_files": 128,
+    "page_routes": 43,
+    "route_handlers": 6,
+    "internal_hrefs": 54
   },
   "issues": [],
   "warnings": []

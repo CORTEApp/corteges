@@ -1,0 +1,43 @@
+import { randomBytes } from "node:crypto"
+import { NextRequest, NextResponse } from "next/server"
+
+import { buildMicrosoftAuthorizationUrl } from "@/lib/microsoft/graph"
+import { createClient } from "@/lib/supabase/server"
+
+const STATE_COOKIE = "corteges_ms_oauth_state"
+const NEXT_COOKIE = "corteges_ms_oauth_next"
+
+function safeNext(raw: string | null) {
+  if (!raw || !raw.startsWith("/") || raw.startsWith("//")) {
+    return "/perfil"
+  }
+  return raw
+}
+
+export async function GET(request: NextRequest) {
+  const url = new URL(request.url)
+  const next = safeNext(url.searchParams.get("next"))
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return NextResponse.redirect(new URL(`/auth/login?next=${encodeURIComponent(next)}`, url.origin))
+  }
+
+  const state = randomBytes(24).toString("base64url")
+  const authUrl = buildMicrosoftAuthorizationUrl(url.origin, state)
+  const response = NextResponse.redirect(authUrl)
+  const cookieOptions = {
+    httpOnly: true,
+    sameSite: "lax" as const,
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: 10 * 60,
+  }
+
+  response.cookies.set(STATE_COOKIE, state, cookieOptions)
+  response.cookies.set(NEXT_COOKIE, next, cookieOptions)
+  return response
+}

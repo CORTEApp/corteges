@@ -13,11 +13,21 @@
 - La secuencia preferida es: `brief -> design-brief -> page-structure -> component-map -> composición -> QA`.
 - Usa `packages/blocks/catalog.json` y `packages/design-rules/*` como fuente de verdad visual tras `project_init`.
 - Prioriza reutilización y coherencia frente a variaciones espontáneas.
+- **Gate obligatorio `frontend-design`**: todo trabajo user-facing debe empezar usando el skill `frontend-design`.
+- Si el cambio toca pantalla, componente, navegación, layout, login, UX, copy visible o una captura del usuario, `frontend-design` entra antes de tocar código.
+- No entregues UI generada solo desde scaffold, shadcn/ui o bloques internos sin dirección visual explícita.
+- Si el trabajo es puramente backend/Supabase/scripts, deja un checkpoint explícito: no se toca UI y no se introduce superficie visual nueva.
+- Skynet es una herramienta operativa privada: primera ruta útil, densidad de trabajo diaria, nada de landing genérica, CRM genérico, SaaS demo, copy de starter ni auth genérica.
+- Contrato visual obligatorio: `.ai/VISUAL_CONTRACT.md`. El default fijo es `saas_atlas_blue_v2`, `fontSize=medium`, `Plus Jakarta Sans`, escala base 14px y shell Edisol Atlas.
+- Toda UI nueva debe heredar tokens, densidad, shell y componentes actuales. No cambies fuente, escala, preset, color primario ni estilo de campos salvo petición expresa.
+- Si se toca UI, ejecuta `npm run audit:visual` y revisa desktop/móvil antes de entregar siempre que sea posible.
 
 ## Greenfield-first
 - El supuesto por defecto es **BBDD nueva desde cero** en Supabase.
 - Las migraciones SQL representan infraestructura como código.
 - No diseñes importación de legado ni compatibilidad con esquemas previos salvo instrucción explícita.
+- Este repo es **Skynet/CORTE.App para uso propio**: no asumas tenants, multiempresa, onboarding de empresa ni memberships salvo petición explícita.
+- Si una tabla necesita aislamiento, usa RLS por usuario autenticado o reglas privadas simples. No introduzcas `tenant_id`, `company_id`, `companies` ni `company_memberships` por defecto.
 
 ## Fuente de verdad técnica
 - Prioriza archivos versionables:
@@ -64,6 +74,7 @@ Si el trabajo supera un cambio trivial, crea o actualiza en `.ai/`:
 - `SCHEMA_MAP.md`, `PERMISSIONS_MATRIX.md`, `AUTH_STRATEGY.md` si tocas bootstrap, auth o permisos
 
 ## Skills a utilizar
+- `frontend-design`: obligatorio para cualquier cambio visible o revisión de pantallas.
 - `corteapp-orchestrator`: coordina tareas multipaso, setup y auditoría.
 - `corteapp-audit-normalizer`: normaliza auditoría a requisitos.
 - `corteapp-nextjs-architect`: define rutas, shell, límites server/client y contratos UI estructurados.
@@ -84,7 +95,7 @@ Si el trabajo supera un cambio trivial, crea o actualiza en `.ai/`:
 ## Reglas de Supabase
 - La secret key solo vive en servidor.
 - Los datos privados requieren RLS real.
-- En multiempresa, aísla por `company_id` o `tenant_id` y verifica fugas.
+- No modeles multiempresa/tenant salvo que se pida de forma explícita.
 - No confíes en filtros del cliente para seguridad.
 - Los secrets de OAuth o Stripe no se commitean.
 

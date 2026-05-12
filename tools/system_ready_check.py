@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate whether a CORTE.App repo has the minimum structure to be considered ready for development."""
+"""Validate whether a CORTE.Ges repo has the minimum structure to be considered ready for development."""
 from __future__ import annotations
 
 import argparse
@@ -97,7 +97,7 @@ def write_markdown(report_path: Path, result: dict[str, object]) -> None:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Check if a CORTE.App repo is ready for development.")
+    parser = argparse.ArgumentParser(description="Check if a CORTE.Ges repo is ready for development.")
     parser.add_argument("--root", default=".")
     parser.add_argument("--env-file", default=".env.local")
     parser.add_argument("--report", default=".ai/SYSTEM_STATUS.md")

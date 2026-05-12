@@ -97,7 +97,7 @@ def write_report(path: Path, env_file: Path, environment: str, data: dict[str, s
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Assist Supabase env setup for CORTE.App repos.")
+    parser = argparse.ArgumentParser(description="Assist Supabase env setup for CORTE.Ges repos.")
     parser.add_argument("--out", default=".env.local")
     parser.add_argument("--report", default=".ai/ENV_SETUP_REPORT.md")
     parser.add_argument("--environment", choices=["local", "staging", "production"])

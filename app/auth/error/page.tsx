@@ -4,18 +4,22 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 
 export default function AuthErrorPage() {
   return (
-    <main className="flex min-h-screen items-center justify-center p-6">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>Error de autenticación</CardTitle>
-          <CardDescription>No se pudo completar el acceso.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Button asChild>
-            <Link href="/auth/login">Volver al login</Link>
-          </Button>
-        </CardContent>
-      </Card>
+    <main className="relative min-h-screen bg-background px-4 py-10 text-foreground">
+      <div className="mx-auto flex min-h-[calc(100vh-5rem)] max-w-md items-center justify-center">
+        <Card className="w-full">
+          <CardHeader>
+            <CardTitle>No se pudo completar el acceso</CardTitle>
+            <CardDescription>
+              La sesión no se ha creado. Vuelve al acceso privado y entra con el usuario master.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button asChild className="w-full">
+              <Link href="/auth/login">Volver al acceso</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
     </main>
   )
 }

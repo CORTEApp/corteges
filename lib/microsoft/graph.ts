@@ -1,0 +1,460 @@
+import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from "node:crypto"
+
+import { createAdminClient } from "@/lib/supabase/admin"
+import type { MicrosoftConnectionStatus } from "@/lib/crm/types"
+
+const DEFAULT_GRAPH_BASE_URL = "https://graph.microsoft.com/v1.0"
+const DEFAULT_TIME_ZONE = "Romance Standard Time"
+const DEFAULT_REDIRECT_PATH = "/integraciones/microsoft/callback"
+const TOKEN_PREFIX = "v1"
+
+export const MICROSOFT_GRAPH_SCOPES = [
+  "openid",
+  "profile",
+  "email",
+  "offline_access",
+  "User.Read",
+  "Calendars.ReadWrite",
+]
+
+type MicrosoftTokenPayload = {
+  access_token: string
+  refresh_token?: string
+  expires_in?: number
+  scope?: string
+  token_type?: string
+}
+
+type MicrosoftProfile = {
+  id: string
+  displayName?: string | null
+  mail?: string | null
+  userPrincipalName?: string | null
+}
+
+type MicrosoftConnectionRow = {
+  user_id: string
+  microsoft_user_id: string | null
+  microsoft_email: string | null
+  display_name: string | null
+  tenant_id: string | null
+  scopes: string[] | null
+  status: "connected" | "reconnect_required"
+  refresh_token_encrypted: string
+  last_error: string | null
+}
+
+export type MicrosoftCalendarEvent = {
+  id: string
+  subject: string
+  startsAt: string
+  endsAt: string | null
+  webLink: string | null
+  joinUrl: string | null
+}
+
+export type CreatedTeamsEvent = MicrosoftCalendarEvent & {
+  iCalUId: string | null
+  raw: unknown
+}
+
+export type TeamsEventAttendee = {
+  email: string
+  name?: string | null
+}
+
+export type CreateTeamsCalendarEventInput = {
+  subject: string
+  bodyHtml: string
+  startLocal: string
+  endLocal: string
+  attendees: TeamsEventAttendee[]
+}
+
+function envValue(...keys: string[]) {
+  for (const key of keys) {
+    const value = process.env[key]
+    if (value?.trim()) {
+      return value.trim()
+    }
+  }
+  return ""
+}
+
+export function getMicrosoftGraphConfig(origin?: string) {
+  const redirectPath = envValue("MICROSOFT_GRAPH_REDIRECT_PATH") || DEFAULT_REDIRECT_PATH
+  const redirectBaseUrl = envValue("MICROSOFT_GRAPH_REDIRECT_BASE_URL")
+  const baseUrl = redirectBaseUrl || origin || ""
+  const normalizedBase = baseUrl.replace(/\/$/, "")
+
+  return {
+    tenantId: envValue("MICROSOFT_GRAPH_TENANT_ID", "M365_TENANT_ID", "ENTRAID_TENANT_ID") || "organizations",
+    clientId: envValue("MICROSOFT_GRAPH_CLIENT_ID", "M365_CLIENT_ID", "ENTRAID_CLIENT_ID"),
+    clientSecret: envValue("MICROSOFT_GRAPH_CLIENT_SECRET", "M365_CLIENT_SECRET"),
+    graphBaseUrl: envValue("MICROSOFT_GRAPH_BASE_URL") || DEFAULT_GRAPH_BASE_URL,
+    redirectPath,
+    redirectUri: normalizedBase ? `${normalizedBase}${redirectPath}` : "",
+    timeZone: envValue("MICROSOFT_GRAPH_TIME_ZONE") || DEFAULT_TIME_ZONE,
+    tokenSecret: envValue("MICROSOFT_GRAPH_TOKEN_ENCRYPTION_KEY", "MICROSOFT_GRAPH_TOKEN_KEY"),
+  }
+}
+
+function assertConfigured(origin?: string, requireRedirect = false) {
+  const config = getMicrosoftGraphConfig(origin)
+  const missing = [
+    ["MICROSOFT_GRAPH_CLIENT_ID", config.clientId],
+    ["MICROSOFT_GRAPH_CLIENT_SECRET", config.clientSecret],
+    ["MICROSOFT_GRAPH_TOKEN_ENCRYPTION_KEY", config.tokenSecret],
+    ...(requireRedirect ? [["MICROSOFT_GRAPH_REDIRECT_BASE_URL or request origin", config.redirectUri]] : []),
+  ].filter(([, value]) => !value)
+
+  if (missing.length) {
+    throw new Error(`Microsoft Graph no esta configurado: falta ${missing.map(([key]) => key).join(", ")}.`)
+  }
+
+  return config
+}
+
+export function isMicrosoftGraphConfigured() {
+  const config = getMicrosoftGraphConfig()
+  return Boolean(config.clientId && config.clientSecret && config.tokenSecret)
+}
+
+function encryptionKey() {
+  const secret = getMicrosoftGraphConfig().tokenSecret
+  if (!secret) {
+    throw new Error("Missing MICROSOFT_GRAPH_TOKEN_ENCRYPTION_KEY.")
+  }
+  return createHash("sha256").update(secret).digest()
+}
+
+function encryptRefreshToken(value: string) {
+  const iv = randomBytes(12)
+  const cipher = createCipheriv("aes-256-gcm", encryptionKey(), iv)
+  const encrypted = Buffer.concat([cipher.update(value, "utf8"), cipher.final()])
+  const tag = cipher.getAuthTag()
+  return [
+    TOKEN_PREFIX,
+    iv.toString("base64url"),
+    tag.toString("base64url"),
+    encrypted.toString("base64url"),
+  ].join(":")
+}
+
+function decryptRefreshToken(value: string) {
+  const [version, ivText, tagText, encryptedText] = value.split(":")
+  if (version !== TOKEN_PREFIX || !ivText || !tagText || !encryptedText) {
+    throw new Error("Microsoft refresh token guardado con formato no soportado.")
+  }
+  const decipher = createDecipheriv("aes-256-gcm", encryptionKey(), Buffer.from(ivText, "base64url"))
+  decipher.setAuthTag(Buffer.from(tagText, "base64url"))
+  return Buffer.concat([
+    decipher.update(Buffer.from(encryptedText, "base64url")),
+    decipher.final(),
+  ]).toString("utf8")
+}
+
+function scopesText() {
+  return MICROSOFT_GRAPH_SCOPES.join(" ")
+}
+
+async function requestToken(body: URLSearchParams, origin?: string): Promise<MicrosoftTokenPayload> {
+  const config = assertConfigured(origin, Boolean(origin))
+  const response = await fetch(`https://login.microsoftonline.com/${config.tenantId}/oauth2/v2.0/token`, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body,
+  })
+
+  if (!response.ok) {
+    throw new Error(`Microsoft token request failed ${response.status}: ${await response.text()}`)
+  }
+
+  return response.json() as Promise<MicrosoftTokenPayload>
+}
+
+async function graphFetch<T>(accessToken: string, path: string, init?: RequestInit): Promise<T> {
+  const config = getMicrosoftGraphConfig()
+  const response = await fetch(`${config.graphBaseUrl.replace(/\/$/, "")}/${path.replace(/^\//, "")}`, {
+    ...init,
+    headers: {
+      Accept: "application/json",
+      Authorization: `Bearer ${accessToken}`,
+      ...(init?.headers ?? {}),
+    },
+  })
+
+  if (!response.ok) {
+    throw new Error(`Microsoft Graph request failed ${response.status}: ${await response.text()}`)
+  }
+
+  return response.json() as Promise<T>
+}
+
+export function buildMicrosoftAuthorizationUrl(origin: string, state: string) {
+  const config = assertConfigured(origin, true)
+  const url = new URL(`https://login.microsoftonline.com/${config.tenantId}/oauth2/v2.0/authorize`)
+  url.searchParams.set("client_id", config.clientId)
+  url.searchParams.set("response_type", "code")
+  url.searchParams.set("redirect_uri", config.redirectUri)
+  url.searchParams.set("response_mode", "query")
+  url.searchParams.set("scope", scopesText())
+  url.searchParams.set("state", state)
+  return url
+}
+
+export async function exchangeMicrosoftAuthorizationCode(code: string, origin: string) {
+  const config = assertConfigured(origin, true)
+  return requestToken(
+    new URLSearchParams({
+      client_id: config.clientId,
+      client_secret: config.clientSecret,
+      code,
+      grant_type: "authorization_code",
+      redirect_uri: config.redirectUri,
+      scope: scopesText(),
+    }),
+    origin,
+  )
+}
+
+export async function readMicrosoftProfile(accessToken: string) {
+  return graphFetch<MicrosoftProfile>(
+    accessToken,
+    "/me?$select=id,displayName,mail,userPrincipalName",
+  )
+}
+
+export async function saveMicrosoftConnection(
+  userId: string,
+  tokenPayload: MicrosoftTokenPayload,
+  profile: MicrosoftProfile,
+) {
+  if (!tokenPayload.refresh_token) {
+    throw new Error("Microsoft no devolvio refresh_token. Revisa el scope offline_access.")
+  }
+
+  const admin = createAdminClient()
+  const config = getMicrosoftGraphConfig()
+  const { error } = await admin.from("microsoft_user_connections").upsert(
+    {
+      user_id: userId,
+      microsoft_user_id: profile.id,
+      microsoft_email: profile.mail ?? profile.userPrincipalName ?? null,
+      display_name: profile.displayName ?? null,
+      tenant_id: config.tenantId,
+      scopes: (tokenPayload.scope ?? scopesText()).split(/\s+/).filter(Boolean),
+      status: "connected",
+      refresh_token_encrypted: encryptRefreshToken(tokenPayload.refresh_token),
+      last_error: null,
+      connected_at: new Date().toISOString(),
+      last_refreshed_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "user_id" },
+  )
+
+  if (error) {
+    throw new Error(error.message)
+  }
+}
+
+export async function disconnectMicrosoftConnection(userId: string) {
+  const admin = createAdminClient()
+  const { error } = await admin
+    .from("microsoft_user_connections")
+    .delete()
+    .eq("user_id", userId)
+
+  if (error) {
+    throw new Error(error.message)
+  }
+}
+
+async function getConnection(userId: string): Promise<MicrosoftConnectionRow | null> {
+  const admin = createAdminClient()
+  const { data, error } = await admin
+    .from("microsoft_user_connections")
+    .select("*")
+    .eq("user_id", userId)
+    .maybeSingle()
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return data as MicrosoftConnectionRow | null
+}
+
+export async function getMicrosoftConnectionStatus(userId: string): Promise<MicrosoftConnectionStatus> {
+  if (!isMicrosoftGraphConfigured()) {
+    return {
+      configured: false,
+      connected: false,
+      requiresReconnect: false,
+      email: null,
+      displayName: null,
+      lastError: "Microsoft Graph no esta configurado en el entorno.",
+    }
+  }
+
+  const connection = await getConnection(userId)
+  return {
+    configured: true,
+    connected: connection?.status === "connected",
+    requiresReconnect: connection?.status === "reconnect_required",
+    email: connection?.microsoft_email ?? null,
+    displayName: connection?.display_name ?? null,
+    lastError: connection?.last_error ?? null,
+  }
+}
+
+async function markReconnectRequired(userId: string, message: string) {
+  const admin = createAdminClient()
+  await admin
+    .from("microsoft_user_connections")
+    .update({
+      status: "reconnect_required",
+      last_error: message,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("user_id", userId)
+}
+
+export async function getMicrosoftAccessTokenForUser(userId: string) {
+  const connection = await getConnection(userId)
+  if (!connection || connection.status !== "connected") {
+    throw new Error("Conecta Microsoft antes de usar la agenda.")
+  }
+
+  try {
+    const config = assertConfigured()
+    const token = await requestToken(
+      new URLSearchParams({
+        client_id: config.clientId,
+        client_secret: config.clientSecret,
+        grant_type: "refresh_token",
+        refresh_token: decryptRefreshToken(connection.refresh_token_encrypted),
+        scope: scopesText(),
+      }),
+    )
+
+    const admin = createAdminClient()
+    await admin
+      .from("microsoft_user_connections")
+      .update({
+        ...(token.refresh_token ? { refresh_token_encrypted: encryptRefreshToken(token.refresh_token) } : {}),
+        scopes: (token.scope ?? scopesText()).split(/\s+/).filter(Boolean),
+        status: "connected",
+        last_error: null,
+        last_refreshed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("user_id", userId)
+
+    return token.access_token
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "No se pudo refrescar Microsoft."
+    await markReconnectRequired(userId, message)
+    throw error
+  }
+}
+
+function eventDateTimeToIso(value: unknown) {
+  if (!value || typeof value !== "object") {
+    return null
+  }
+  const dateTime = "dateTime" in value ? String(value.dateTime ?? "") : ""
+  if (!dateTime) {
+    return null
+  }
+  const date = new Date(dateTime)
+  return Number.isNaN(date.valueOf()) ? null : date.toISOString()
+}
+
+function graphEventToCalendarEvent(event: Record<string, unknown>): MicrosoftCalendarEvent {
+  const onlineMeeting = event.onlineMeeting && typeof event.onlineMeeting === "object"
+    ? (event.onlineMeeting as Record<string, unknown>)
+    : {}
+
+  return {
+    id: String(event.id ?? ""),
+    subject: String(event.subject ?? "Evento"),
+    startsAt: eventDateTimeToIso(event.start) ?? new Date().toISOString(),
+    endsAt: eventDateTimeToIso(event.end),
+    webLink: typeof event.webLink === "string" ? event.webLink : null,
+    joinUrl: typeof onlineMeeting.joinUrl === "string" ? onlineMeeting.joinUrl : null,
+  }
+}
+
+export async function listMicrosoftCalendarView(userId: string, start: Date, end: Date) {
+  const accessToken = await getMicrosoftAccessTokenForUser(userId)
+  const config = getMicrosoftGraphConfig()
+  const url = new URL(`${config.graphBaseUrl.replace(/\/$/, "")}/me/calendarView`)
+  url.searchParams.set("startDateTime", start.toISOString())
+  url.searchParams.set("endDateTime", end.toISOString())
+  url.searchParams.set("$select", "id,subject,start,end,webLink,onlineMeeting,isOnlineMeeting")
+  url.searchParams.set("$orderby", "start/dateTime")
+
+  const response = await fetch(url, {
+    headers: {
+      Accept: "application/json",
+      Authorization: `Bearer ${accessToken}`,
+      Prefer: `outlook.timezone="${config.timeZone}"`,
+    },
+  })
+
+  if (!response.ok) {
+    throw new Error(`Microsoft calendarView failed ${response.status}: ${await response.text()}`)
+  }
+
+  const payload = (await response.json()) as { value?: Array<Record<string, unknown>> }
+  return (payload.value ?? []).map(graphEventToCalendarEvent).filter((event) => event.id)
+}
+
+export async function createTeamsCalendarEvent(userId: string, input: CreateTeamsCalendarEventInput): Promise<CreatedTeamsEvent> {
+  const accessToken = await getMicrosoftAccessTokenForUser(userId)
+  const config = getMicrosoftGraphConfig()
+  const payload = {
+    subject: input.subject,
+    body: {
+      contentType: "HTML",
+      content: input.bodyHtml,
+    },
+    start: {
+      dateTime: input.startLocal,
+      timeZone: config.timeZone,
+    },
+    end: {
+      dateTime: input.endLocal,
+      timeZone: config.timeZone,
+    },
+    attendees: input.attendees.map((attendee) => ({
+      emailAddress: {
+        address: attendee.email,
+        name: attendee.name ?? attendee.email,
+      },
+      type: "required",
+    })),
+    allowNewTimeProposals: true,
+    isOnlineMeeting: true,
+    onlineMeetingProvider: "teamsForBusiness",
+    transactionId: randomUUID(),
+  }
+
+  const event = await graphFetch<Record<string, unknown>>(accessToken, "/me/events", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Prefer: `outlook.timezone="${config.timeZone}"`,
+    },
+    body: JSON.stringify(payload),
+  })
+
+  const mapped = graphEventToCalendarEvent(event)
+  return {
+    ...mapped,
+    iCalUId: typeof event.iCalUId === "string" ? event.iCalUId : null,
+    raw: event,
+  }
+}

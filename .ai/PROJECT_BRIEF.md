@@ -6,7 +6,8 @@
 ## Objetivo de este ciclo
 - Inicializar el repositorio para desarrollo con `Next.js + TypeScript + App Router + Tailwind + shadcn/ui + Supabase`.
 - Dejar el estado final en `SYSTEM_READY_FOR_DEVELOPMENT`.
-- No crear módulos de negocio ni lógica funcional específica.
+- Operar CORTE.Ges en modo privado de uso propio, sin bootstrap de empresa.
+- Añadir el primer módulo operativo real: Clientes.
 
 ## Alcance ejecutado
 - `project_init` con scaffold de marketing + app shell.

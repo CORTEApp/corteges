@@ -1,3 +1,2 @@
 -- Seed reproducible y deliberadamente mínimo.
--- La creación del primer tenant/admin se hace con:
--- select * from public.bootstrap_first_company('demo-company', 'Demo Company');
+-- Skynet/CORTE.App no usa tenants ni bootstrap de empresa.
