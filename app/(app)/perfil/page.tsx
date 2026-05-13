@@ -1,10 +1,13 @@
-import { KeyRound, LogOut, Palette, UserRound } from "lucide-react"
+import Link from "next/link"
+import { CalendarDays, KeyRound, LogOut, Mail, Palette, PlugZap, RefreshCw, UserRound } from "lucide-react"
 
 import { updateProfilePreferences, signOutAction } from "@/app/(app)/perfil/actions"
+import { disconnectMicrosoftAction } from "@/app/integraciones/microsoft/actions"
 import { DetailField, DetailFieldGrid } from "@/components/detail-fields"
 import { ResourceContentTabs } from "@/components/resource-content-tabs"
 import { ResourceDetailScreen } from "@/components/resource-screens"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { FormSection } from "@/components/ui/form-section"
 import { FormSectionTabPanel } from "@/components/ui/form-section-tabs"
 import { FormLoadingOverlay } from "@/components/ui/form-loading-overlay"
@@ -13,9 +16,13 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { ProfileUiPreferencesFields } from "@/components/ui/profile-ui-preferences-fields"
 import { Select } from "@/components/ui/select"
+import { getMicrosoftConnectionStatus } from "@/lib/microsoft/graph"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { APP_ROLE_LABELS } from "@/lib/users/roles"
 import { getAuthenticatedMembership } from "@/lib/users/server"
+
+const MICROSOFT_PROFILE_NEXT = "/perfil#integraciones"
+const MICROSOFT_CONNECT_HREF = `/integraciones/microsoft/connect?next=${encodeURIComponent(MICROSOFT_PROFILE_NEXT)}`
 
 function normalizeLanguage(value: unknown) {
   return typeof value === "string" && ["es", "en", "ca"].includes(value) ? value : "es"
@@ -47,6 +54,42 @@ function HiddenProfilePreferences({
       <input type="hidden" name="text_size" value={textSize} />
     </>
   )
+}
+
+function microsoftStatusLabel({
+  configured,
+  connected,
+  requiresReconnect,
+}: {
+  configured: boolean
+  connected: boolean
+  requiresReconnect: boolean
+}) {
+  if (!configured) {
+    return "Sin configurar"
+  }
+  if (connected) {
+    return "Conectado"
+  }
+  if (requiresReconnect) {
+    return "Reconectar"
+  }
+  return "Pendiente"
+}
+
+function microsoftStatusTone({
+  configured,
+  connected,
+  requiresReconnect,
+}: {
+  configured: boolean
+  connected: boolean
+  requiresReconnect: boolean
+}) {
+  if (!configured || requiresReconnect) {
+    return "warning" as const
+  }
+  return connected ? ("success" as const) : ("neutral" as const)
 }
 
 export default async function PerfilPage({
@@ -82,6 +125,9 @@ export default async function PerfilPage({
   const preferredTheme = stringPreference(profile.preferred_theme, stringPreference(metadata.preferred_theme, "saas_atlas_blue_v2"))
   const colorMode = stringPreference(profile.color_mode, stringPreference(metadata.color_mode, "system"))
   const textSize = stringPreference(profile.text_size, stringPreference(metadata.text_size, "medium"))
+  const microsoftConnection = await getMicrosoftConnectionStatus(membership.user.id)
+  const microsoftLabel = microsoftStatusLabel(microsoftConnection)
+  const microsoftTone = microsoftStatusTone(microsoftConnection)
   const roleLabels = membership.roles.length
     ? membership.roles.map((role) => APP_ROLE_LABELS[role]).join(", ")
     : "Sin roles"
@@ -111,6 +157,7 @@ export default async function PerfilPage({
         tabs={[
           { id: "preferencias", label: "Preferencias", icon: <Palette className="size-4" aria-hidden="true" /> },
           { id: "seguridad", label: "Seguridad", icon: <KeyRound className="size-4" aria-hidden="true" /> },
+          { id: "integraciones", label: "Integraciones", icon: <PlugZap className="size-4" aria-hidden="true" /> },
           { id: "acceso", label: "Acceso", icon: <UserRound className="size-4" aria-hidden="true" /> },
         ]}
       >
@@ -178,6 +225,76 @@ export default async function PerfilPage({
               </div>
               <FormSubmitButton pendingLabel="Actualizando contraseña...">Actualizar contraseña</FormSubmitButton>
             </form>
+          </FormSection>
+        </FormSectionTabPanel>
+
+        <FormSectionTabPanel tabId="integraciones">
+          <FormSection
+            action={<Badge tone={microsoftTone}>{microsoftLabel}</Badge>}
+            description="Conexion delegada de tu usuario para calendario, reuniones de Teams y correo de facturacion."
+            title="Microsoft 365"
+          >
+            <div className="grid gap-5">
+              <DetailFieldGrid>
+                <DetailField
+                  label="Cuenta"
+                  value={microsoftConnection.email ?? microsoftConnection.displayName ?? "Sin cuenta conectada"}
+                />
+                <DetailField label="Estado" value={microsoftLabel} />
+                <DetailField label="Calendario y Teams" value="Calendars.ReadWrite" />
+                <DetailField label="Correo" value="Mail.Send / Mail.Send.Shared" />
+              </DetailFieldGrid>
+
+              <div className="flex flex-wrap gap-2">
+                <Badge tone="info">
+                  <CalendarDays className="mr-1 size-3" aria-hidden="true" />
+                  Calendario
+                </Badge>
+                <Badge tone="info">
+                  <Mail className="mr-1 size-3" aria-hidden="true" />
+                  Correo
+                </Badge>
+                <Badge tone="info">
+                  <PlugZap className="mr-1 size-3" aria-hidden="true" />
+                  Buzones compartidos
+                </Badge>
+              </div>
+
+              {microsoftConnection.lastError ? (
+                <p className="rounded-[var(--radius-control)] border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                  {microsoftConnection.lastError}
+                </p>
+              ) : null}
+
+              <div className="flex flex-wrap gap-3">
+                {microsoftConnection.configured ? (
+                  <Button asChild>
+                    <Link href={MICROSOFT_CONNECT_HREF}>
+                      {microsoftConnection.connected ? (
+                        <RefreshCw className="size-4" aria-hidden="true" />
+                      ) : (
+                        <PlugZap className="size-4" aria-hidden="true" />
+                      )}
+                      {microsoftConnection.connected ? "Reconectar Microsoft" : "Conectar Microsoft"}
+                    </Link>
+                  </Button>
+                ) : (
+                  <Button disabled>
+                    <PlugZap className="size-4" aria-hidden="true" />
+                    Microsoft no configurado
+                  </Button>
+                )}
+
+                {microsoftConnection.connected || microsoftConnection.requiresReconnect ? (
+                  <form action={disconnectMicrosoftAction}>
+                    <input type="hidden" name="redirect_to" value={MICROSOFT_PROFILE_NEXT} />
+                    <FormSubmitButton variant="outline" pendingLabel="Desconectando...">
+                      Desconectar
+                    </FormSubmitButton>
+                  </form>
+                ) : null}
+              </div>
+            </div>
           </FormSection>
         </FormSectionTabPanel>
 

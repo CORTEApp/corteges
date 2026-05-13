@@ -7,7 +7,6 @@ import {
   saveOpportunityActivityAction,
   updateOpportunityStatusAction,
 } from "@/app/(app)/crm/oportunidades/actions"
-import { disconnectMicrosoftAction } from "@/app/integraciones/microsoft/actions"
 import { DetailField, DetailFieldGrid, DetailTextBlock } from "@/components/detail-fields"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -214,7 +213,7 @@ function OpportunityAgendaSection({
 }) {
   const detailPath = `/crm/oportunidades/${opportunity.id}`
   const nextPath = `${detailPath}#gestion`
-  const connectHref = `/integraciones/microsoft/connect?next=${encodeURIComponent(nextPath)}`
+  const microsoftProfileHref = "/perfil#integraciones"
   const statusTone = !microsoftConnection.configured || microsoftConnection.requiresReconnect
     ? "warning"
     : microsoftConnection.connected
@@ -259,10 +258,9 @@ function OpportunityAgendaSection({
                       {microsoftConnection.email ?? microsoftConnection.displayName ?? "Cuenta Microsoft conectada"}
                     </p>
                   </div>
-                  <form action={disconnectMicrosoftAction}>
-                    <input type="hidden" name="redirect_to" value={nextPath} />
-                    <Button type="submit" variant="ghost" size="sm">Desconectar</Button>
-                  </form>
+                  <Button asChild variant="ghost" size="sm">
+                    <Link href={microsoftProfileHref}>Gestionar</Link>
+                  </Button>
                 </div>
                 <TeamsMeetingForm opportunity={opportunity} redirectTo={nextPath} />
               </>
@@ -280,9 +278,9 @@ function OpportunityAgendaSection({
                   ) : null}
                 </div>
                 <Button asChild>
-                  <Link href={connectHref}>
+                  <Link href={microsoftProfileHref}>
                     <PlugZap aria-hidden="true" />
-                    Conectar Microsoft
+                    Configurar en perfil
                   </Link>
                 </Button>
               </div>
