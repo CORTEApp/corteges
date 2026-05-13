@@ -5,7 +5,7 @@ import { redirect } from "next/navigation"
 
 import { requireBillingUser } from "@/lib/billing/data"
 import { toNumber } from "@/lib/billing/format"
-import type { BillingFacturableUnit, BillingPaymentMethod } from "@/lib/billing/types"
+import type { BillingPaymentMethod } from "@/lib/billing/types"
 import { createClient } from "@/lib/supabase/server"
 
 const PAYMENT_METHODS = new Set(["stripe", "sepa", "transfer", "other"])
@@ -75,10 +75,9 @@ async function getActionContext(nextPath: string) {
 }
 
 export async function createProformaAction(formData: FormData) {
-  const { supabase, userId } = await getActionContext("/facturacion/proformas/nuevo")
+  const { supabase } = await getActionContext("/facturacion/proformas/nuevo")
   const clientId = requiredText(formData, "client_id")
   const issueDate = dateValue(formData, "issue_date")
-  const issueYear = Number.parseInt(issueDate.slice(0, 4), 10)
   const dueDate = textValue(formData, "due_date")
   const rowCount = Math.min(Math.max(Number.parseInt(textValue(formData, "line_count") ?? "0", 10), 1), 20)
 
@@ -96,123 +95,26 @@ export async function createProformaAction(formData: FormData) {
     throw new Error("Anade al menos una linea facturable.")
   }
 
-  const [{ data: client, error: clientError }, { data: facturables, error: facturablesError }] =
-    await Promise.all([
-      supabase
-        .from("clients")
-        .select("id, name, tax_id, billing_email")
-        .eq("id", clientId)
-        .maybeSingle(),
-      supabase
-        .from("billing_facturables")
-        .select("id, code, description, unit_price, unit_type")
-        .in("id", selectedRows.map((line) => line.facturableId)),
-    ])
-
-  if (clientError) {
-    throw clientError
-  }
-
-  if (facturablesError) {
-    throw facturablesError
-  }
-
-  if (!client) {
-    throw new Error("Cliente no encontrado.")
-  }
-
-  const facturableById = new Map(
-    ((facturables ?? []) as {
-      id: string
-      code: string
-      description: string
-      unit_price: number | string
-      unit_type: BillingFacturableUnit
-    }[]).map((facturable) => [facturable.id, facturable]),
-  )
-
-  const lines = selectedRows.map((row, index) => {
-    const facturable = row.facturableId ? facturableById.get(row.facturableId) : null
-    if (!facturable) {
-      throw new Error("Una de las lineas seleccionadas ya no esta disponible.")
-    }
-
-    const unitPrice = toNumber(facturable.unit_price)
-    const subtotal = roundMoney(unitPrice * row.quantity)
-    const tax = roundMoney(subtotal * (row.vatRate / 100))
-
-    return {
-      line_index: index + 1,
-      facturable_id: facturable.id,
-      code: facturable.code,
-      description: facturable.description,
+  const { data: createdId, error } = await supabase.rpc("create_billing_proforma", {
+    p_client_id: clientId,
+    p_issue_date: issueDate,
+    p_due_date: dueDate,
+    p_project: textValue(formData, "project"),
+    p_observations: textValue(formData, "observations"),
+    p_lines: selectedRows.map((row) => ({
+      facturable_id: row.facturableId,
       quantity: row.quantity,
-      unit_price: unitPrice,
       vat_rate: row.vatRate,
-      unit_type: facturable.unit_type,
-      subtotal_amount: subtotal,
-      tax_amount: tax,
-      total_amount: roundMoney(subtotal + tax),
-    }
+    })),
   })
 
-  const subtotal = roundMoney(lines.reduce((total, line) => total + line.subtotal_amount, 0))
-  const tax = roundMoney(lines.reduce((total, line) => total + line.tax_amount, 0))
-  const total = roundMoney(subtotal + tax)
-
-  const { data: numberRows, error: numberError } = await supabase.rpc("next_billing_document_number", {
-    p_document_type: "proforma",
-    p_series: "P",
-    p_number_year: issueYear,
-  })
-
-  if (numberError) {
-    throw numberError
+  if (error) {
+    throw error
   }
 
-  const numberRow = Array.isArray(numberRows) ? numberRows[0] : numberRows
-  if (!numberRow?.document_number || !numberRow?.number_value) {
-    throw new Error("No se pudo reservar numero de proforma.")
-  }
-
-  const { data: created, error: insertError } = await supabase
-    .from("billing_documents")
-    .insert({
-      document_type: "proforma",
-      status: "issued",
-      payment_status: "unpaid",
-      series: "P",
-      number_year: issueYear,
-      number_value: numberRow.number_value,
-      document_number: numberRow.document_number,
-      client_id: client.id,
-      client_name: client.name,
-      client_tax_id: client.tax_id,
-      billing_email: client.billing_email,
-      project: textValue(formData, "project"),
-      issue_date: issueDate,
-      due_date: dueDate,
-      subtotal_amount: subtotal,
-      tax_amount: tax,
-      total_amount: total,
-      observations: textValue(formData, "observations"),
-      created_by: userId,
-      updated_by: userId,
-    })
-    .select("id")
-    .single()
-
-  if (insertError) {
-    throw insertError
-  }
-
-  const documentId = (created as { id: string }).id
-  const { error: lineError } = await supabase
-    .from("billing_document_lines")
-    .insert(lines.map((line) => ({ ...line, document_id: documentId })))
-
-  if (lineError) {
-    throw lineError
+  const documentId = Array.isArray(createdId) ? createdId[0] : createdId
+  if (!documentId || typeof documentId !== "string") {
+    throw new Error("No se pudo crear la proforma.")
   }
 
   revalidatePath("/facturacion/proformas")

@@ -15,7 +15,11 @@ export const MICROSOFT_GRAPH_SCOPES = [
   "offline_access",
   "User.Read",
   "Calendars.ReadWrite",
+  "Mail.Send",
+  "Mail.Send.Shared",
 ]
+
+const MICROSOFT_GRAPH_MAIL_SCOPES = ["Mail.Send", "Mail.Send.Shared"] as const
 
 type MicrosoftTokenPayload = {
   access_token: string
@@ -69,6 +73,28 @@ export type CreateTeamsCalendarEventInput = {
   startLocal: string
   endLocal: string
   attendees: TeamsEventAttendee[]
+}
+
+export type MicrosoftMailRecipient = {
+  email: string
+  name?: string | null
+}
+
+export type MicrosoftMailAttachment = {
+  name: string
+  contentType: string
+  contentBytes: string
+}
+
+export type SendMicrosoftMailInput = {
+  mailboxEmail?: string | null
+  subject: string
+  bodyHtml: string
+  to: MicrosoftMailRecipient[]
+  cc?: MicrosoftMailRecipient[]
+  bcc?: MicrosoftMailRecipient[]
+  attachments?: MicrosoftMailAttachment[]
+  saveToSentItems?: boolean
 }
 
 function envValue(...keys: string[]) {
@@ -173,6 +199,22 @@ async function requestToken(body: URLSearchParams, origin?: string): Promise<Mic
   return response.json() as Promise<MicrosoftTokenPayload>
 }
 
+function graphErrorMessage(status: number, text: string) {
+  let detail = text.trim()
+
+  if (detail) {
+    try {
+      const parsed = JSON.parse(detail) as { error?: { code?: string; message?: string } }
+      detail = [parsed.error?.code, parsed.error?.message].filter(Boolean).join(": ") || detail
+    } catch {
+      // Keep sanitized raw text when Graph does not return JSON.
+    }
+  }
+
+  detail = detail.replace(/Bearer\s+[A-Za-z0-9._~+/=-]+/gi, "Bearer [redacted]").slice(0, 500)
+  return detail ? `Microsoft Graph request failed ${status}: ${detail}` : `Microsoft Graph request failed ${status}`
+}
+
 async function graphFetch<T>(accessToken: string, path: string, init?: RequestInit): Promise<T> {
   const config = getMicrosoftGraphConfig()
   const response = await fetch(`${config.graphBaseUrl.replace(/\/$/, "")}/${path.replace(/^\//, "")}`, {
@@ -185,10 +227,24 @@ async function graphFetch<T>(accessToken: string, path: string, init?: RequestIn
   })
 
   if (!response.ok) {
-    throw new Error(`Microsoft Graph request failed ${response.status}: ${await response.text()}`)
+    throw new Error(graphErrorMessage(response.status, await response.text()))
   }
 
-  return response.json() as Promise<T>
+  const text = await response.text()
+  if (!text) {
+    return undefined as T
+  }
+
+  return JSON.parse(text) as T
+}
+
+function missingMailScopes(scopes: string[] | null | undefined) {
+  const granted = new Set(scopes ?? [])
+  return MICROSOFT_GRAPH_MAIL_SCOPES.filter((scope) => !granted.has(scope))
+}
+
+function reconnectForMailScopesMessage(missing: readonly string[]) {
+  return `Reconecta Microsoft para conceder permisos de correo: ${missing.join(", ")}.`
 }
 
 export function buildMicrosoftAuthorizationUrl(origin: string, state: string) {
@@ -299,6 +355,20 @@ export async function getMicrosoftConnectionStatus(userId: string): Promise<Micr
   }
 
   const connection = await getConnection(userId)
+  const missing = missingMailScopes(connection?.scopes)
+  if (connection?.status === "connected" && missing.length > 0) {
+    const message = reconnectForMailScopesMessage(missing)
+    await markReconnectRequired(userId, message)
+    return {
+      configured: true,
+      connected: false,
+      requiresReconnect: true,
+      email: connection.microsoft_email ?? null,
+      displayName: connection.display_name ?? null,
+      lastError: message,
+    }
+  }
+
   return {
     configured: true,
     connected: connection?.status === "connected",
@@ -324,7 +394,14 @@ async function markReconnectRequired(userId: string, message: string) {
 export async function getMicrosoftAccessTokenForUser(userId: string) {
   const connection = await getConnection(userId)
   if (!connection || connection.status !== "connected") {
-    throw new Error("Conecta Microsoft antes de usar la agenda.")
+    throw new Error("Conecta Microsoft antes de usar esta integracion.")
+  }
+
+  const missing = missingMailScopes(connection.scopes)
+  if (missing.length > 0) {
+    const message = reconnectForMailScopesMessage(missing)
+    await markReconnectRequired(userId, message)
+    throw new Error(message)
   }
 
   try {
@@ -457,4 +534,48 @@ export async function createTeamsCalendarEvent(userId: string, input: CreateTeam
     iCalUId: typeof event.iCalUId === "string" ? event.iCalUId : null,
     raw: event,
   }
+}
+
+function mailRecipient(recipient: MicrosoftMailRecipient) {
+  return {
+    emailAddress: {
+      address: recipient.email,
+      name: recipient.name ?? recipient.email,
+    },
+  }
+}
+
+export async function sendMicrosoftMailForUser(userId: string, input: SendMicrosoftMailInput) {
+  if (input.to.length === 0) {
+    throw new Error("El email necesita al menos un destinatario.")
+  }
+
+  const accessToken = await getMicrosoftAccessTokenForUser(userId)
+  const mailboxEmail = input.mailboxEmail?.trim()
+  const endpoint = mailboxEmail ? `/users/${encodeURIComponent(mailboxEmail)}/sendMail` : "/me/sendMail"
+  const message = {
+    subject: input.subject,
+    body: {
+      contentType: "HTML",
+      content: input.bodyHtml,
+    },
+    toRecipients: input.to.map(mailRecipient),
+    ccRecipients: (input.cc ?? []).map(mailRecipient),
+    bccRecipients: (input.bcc ?? []).map(mailRecipient),
+    attachments: (input.attachments ?? []).map((attachment) => ({
+      "@odata.type": "#microsoft.graph.fileAttachment",
+      name: attachment.name,
+      contentType: attachment.contentType,
+      contentBytes: attachment.contentBytes,
+    })),
+  }
+
+  await graphFetch<void>(accessToken, endpoint, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      message,
+      saveToSentItems: input.saveToSentItems ?? true,
+    }),
+  })
 }
