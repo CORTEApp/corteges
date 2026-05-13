@@ -256,6 +256,7 @@ export function buildMicrosoftAuthorizationUrl(origin: string, state: string) {
   url.searchParams.set("response_mode", "query")
   url.searchParams.set("scope", scopesText())
   url.searchParams.set("state", state)
+  url.searchParams.set("prompt", "select_account")
   return url
 }
 
