@@ -37,3 +37,5 @@
 35. [x] Implementar agenda mixta en gestion de oportunidad con reuniones Teams via Microsoft Graph delegado por usuario.
 36. [x] Añadir migracion `00000000000021_crm_teams_agenda.sql`, rutas OAuth Microsoft y verificacion SQL `crm_teams_agenda_verification.sql`.
 37. [x] Aplicar migracion remota de agenda Teams via `SESSION_POOLER` y verificar `supabase/queries/crm_teams_agenda_verification.sql`.
+38. [x] Implementar `Estadisticas > Facturacion` con tabs T1-T4/Anual, vistas de gastos, ingresos, declaracion de impuestos, CSV y configuracion fiscal IRPF en `/settings`.
+39. [x] Aplicar en Supabase remoto `00000000000029_fiscal_tax_settings.sql` y verificar `supabase/queries/fiscal_tax_settings_verification.sql`.

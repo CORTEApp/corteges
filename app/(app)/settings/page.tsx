@@ -1,8 +1,9 @@
 import Link from "next/link"
-import { AlertTriangle, Building2, Mail, PlugZap, Save, Send, Settings2, ShieldCheck } from "lucide-react"
+import { AlertTriangle, Building2, Calculator, Mail, PlugZap, Save, Send, Settings2, ShieldCheck } from "lucide-react"
 
 import {
   deactivateMailOutboxAction,
+  saveFiscalTaxSettingsAction,
   saveMailOutboxAction,
   saveModuleOutboxSettingsAction,
   testMailOutboxAction,
@@ -27,6 +28,13 @@ import {
   type MailOutboxModuleSetting,
   type MicrosoftOutboxConnection,
 } from "@/lib/mail/types"
+import {
+  currentFiscalYear,
+  formatFiscalAmount,
+  formatFiscalPercent,
+  getFiscalTaxSettingsForYear,
+  type FiscalTaxSettings,
+} from "@/lib/statistics/fiscal"
 import { requireAdminAccess } from "@/lib/users/server"
 
 const OUTBOX_MODE_OPTIONS: Array<{ value: MailOutboxMode; label: string }> = [
@@ -211,6 +219,82 @@ function ModuleAssignments({
   )
 }
 
+function FiscalTaxSettingsForm({ settings }: { settings: FiscalTaxSettings }) {
+  return (
+    <FormSection
+      id="fiscalidad"
+      title="Fiscalidad"
+      description="Perfil de tramos usado por Estadisticas > Facturacion para estimar IRPF."
+      action={<Badge tone={settings.source === "database" ? "success" : "warning"}>{settings.source === "database" ? "Guardado" : "Defecto"}</Badge>}
+    >
+      <form action={saveFiscalTaxSettingsAction} className="relative grid gap-5">
+        <FormLoadingOverlay label="Guardando fiscalidad..." />
+        <div className="grid gap-4 lg:grid-cols-[8rem_minmax(0,1fr)]">
+          <div className="space-y-2">
+            <Label htmlFor="tax_year">Año activo</Label>
+            <Input id="tax_year" name="tax_year" type="number" min="2000" max="2200" defaultValue={settings.taxYear} required />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="profile_label">Etiqueta</Label>
+            <Input id="profile_label" name="profile_label" defaultValue={settings.profileLabel} required />
+          </div>
+        </div>
+
+        <div className="grid gap-3">
+          {settings.irpfBrackets.map((bracket, index) => (
+            <div
+              key={`bracket-${index}`}
+              className="grid gap-3 rounded-[var(--radius-panel)] border border-border/80 bg-[color:var(--surface-2)] p-3 sm:grid-cols-[1fr_9rem]"
+            >
+              <div className="space-y-2">
+                <Label htmlFor={`bracket_up_to_${index}`}>Tramo {index + 1}</Label>
+                <Input
+                  id={`bracket_up_to_${index}`}
+                  name="bracket_up_to"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="Sin limite"
+                  defaultValue={bracket.upTo ?? ""}
+                />
+                <p className="text-xs leading-5 text-muted-foreground">
+                  {bracket.upTo === null ? "Ultimo tramo abierto" : `Hasta ${formatFiscalAmount(bracket.upTo)}`}
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor={`bracket_rate_${index}`}>Tipo</Label>
+                <Input
+                  id={`bracket_rate_${index}`}
+                  name="bracket_rate"
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.01"
+                  defaultValue={bracket.rate}
+                  required
+                />
+                <p className="text-xs leading-5 text-muted-foreground">{formatFiscalPercent(bracket.rate)}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="source_note">Nota interna</Label>
+          <Input id="source_note" name="source_note" defaultValue={settings.sourceNote ?? ""} />
+        </div>
+
+        <div className="flex justify-end">
+          <FormSubmitButton pendingLabel="Guardando...">
+            <Save className="size-4" aria-hidden="true" />
+            Guardar fiscalidad
+          </FormSubmitButton>
+        </div>
+      </form>
+    </FormSection>
+  )
+}
+
 export default async function SettingsPage({
   searchParams,
 }: {
@@ -218,12 +302,18 @@ export default async function SettingsPage({
 }) {
   const params = (await searchParams) ?? {}
   await requireAdminAccess("/settings")
-  const { outboxes, moduleSettings, microsoftConnections } = await listMailSettingsPageData()
+  const [
+    { outboxes, moduleSettings, microsoftConnections },
+    fiscalSettings,
+  ] = await Promise.all([
+    listMailSettingsPageData(),
+    getFiscalTaxSettingsForYear(currentFiscalYear()),
+  ])
   const settingsByModule = moduleSettingMap(moduleSettings)
   const outboxesById = outboxMap(outboxes)
   const connectionsByUserId = mailConnectionMap(microsoftConnections)
   const activeOutboxes = outboxes.filter((outbox) => outbox.active)
-  const saved = params.saved === "outbox" || params.saved === "modules"
+  const saved = params.saved === "outbox" || params.saved === "modules" || params.saved === "fiscal"
   const testStatus = firstParam(params.test)
   const testOutbox = firstParam(params.outbox)
   const testRecipient = firstParam(params.to)
@@ -266,6 +356,12 @@ export default async function SettingsPage({
           description: settingsByModule.get("expense_invoice_intake")
             ? outboxesById.get(settingsByModule.get("expense_invoice_intake") ?? "")?.email_address
             : "Sin buzon",
+        },
+        {
+          label: "Fiscalidad",
+          value: String(fiscalSettings.taxYear),
+          description: fiscalSettings.profileLabel,
+          icon: <Calculator className="size-4" aria-hidden="true" />,
         },
       ]}
     >
@@ -367,6 +463,7 @@ export default async function SettingsPage({
 
         <div className="grid content-start gap-6">
           <ModuleAssignments outboxes={outboxes} settings={moduleSettings} />
+          <FiscalTaxSettingsForm settings={fiscalSettings} />
 
           <FormSection
             title="Asignacion actual"

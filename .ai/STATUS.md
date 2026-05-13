@@ -10,3 +10,4 @@
 - sharepoint_billing_pdfs_last_import: `272_pdfs_135_billing_documents`
 - microsoft_mail_settings: `global_module_outboxes_ready`
 - microsoft_mail_modules: `billing_crm`
+- fiscal_statistics: `estadisticas_facturacion_csv_ready_remote_verified`

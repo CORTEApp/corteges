@@ -108,3 +108,8 @@
 2. `Perfil > Integraciones` conserva la conexion delegada del usuario; `/settings` solo decide que buzon usa cada modulo.
 3. `mail_outboxes` sigue siendo catalogo de buzones y `mail_outbox_module_settings` pasa a ser la fuente nueva para resolver `billing` y `crm`.
 4. Facturacion resuelve su buzon por `module='billing'` cuando no se pasa un buzon explicito. CRM queda preparado para futuros emails, sin cambiar el comportamiento de reuniones Teams.
+5. `Estadisticas > Facturacion` se crea como lectura fiscal privada y exportable, no como cierre bloqueado ni presentacion oficial.
+6. Las vistas fiscales se organizan por tabs T1, T2, T3, T4 y Anual; cada vista usa el mismo rango para gastos, ingresos e impuestos.
+7. Los ingresos fiscales salen de `billing_documents` con `document_type='invoice'`, excluyendo facturas `cancelled` y `discarded`.
+8. Los gastos fiscales salen de `expense_individuals`; si falta base se deriva desde total y tipo IVA para mantener el export operativo.
+9. Los tramos IRPF viven en `fiscal_tax_settings`, son editables desde `/settings#fiscalidad` y se tratan como estimacion interna configurable.

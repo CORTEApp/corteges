@@ -10,6 +10,7 @@ import {
   upsertMailOutbox,
 } from "@/lib/mail/settings"
 import { type MailOutboxMode } from "@/lib/mail/types"
+import { upsertFiscalTaxSettings, type FiscalIrpfBracket } from "@/lib/statistics/fiscal"
 import { requireAdminAccess } from "@/lib/users/server"
 
 function stringValue(formData: FormData, key: string) {
@@ -20,6 +21,40 @@ function stringValue(formData: FormData, key: string) {
 function checkboxValue(formData: FormData, key: string) {
   const value = formData.get(key)
   return value === "on" || value === "true" || value === "1"
+}
+
+function numberValue(value: FormDataEntryValue | null, label: string) {
+  const raw = typeof value === "string" ? value.trim().replace(",", ".") : ""
+  const parsed = Number.parseFloat(raw)
+  if (!Number.isFinite(parsed)) {
+    throw new Error(`${label} no es valido.`)
+  }
+
+  return parsed
+}
+
+function optionalNumberValue(value: FormDataEntryValue | null) {
+  const raw = typeof value === "string" ? value.trim().replace(",", ".") : ""
+  if (!raw) {
+    return null
+  }
+
+  const parsed = Number.parseFloat(raw)
+  if (!Number.isFinite(parsed)) {
+    throw new Error("Un limite IRPF no es valido.")
+  }
+
+  return parsed
+}
+
+function fiscalBracketsFromForm(formData: FormData): FiscalIrpfBracket[] {
+  const limits = formData.getAll("bracket_up_to")
+  const rates = formData.getAll("bracket_rate")
+
+  return rates.map((rateValue, index) => ({
+    upTo: optionalNumberValue(limits[index] ?? null),
+    rate: numberValue(rateValue, "Un tipo IRPF"),
+  }))
 }
 
 function redirectUrlWithParams(params: Record<string, string>) {
@@ -84,4 +119,19 @@ export async function saveModuleOutboxSettingsAction(formData: FormData) {
 
   revalidatePath("/settings")
   redirect("/settings?saved=modules")
+}
+
+export async function saveFiscalTaxSettingsAction(formData: FormData) {
+  const membership = await requireAdminAccess("/settings")
+  await upsertFiscalTaxSettings({
+    taxYear: Math.trunc(numberValue(formData.get("tax_year"), "El año fiscal")),
+    profileLabel: stringValue(formData, "profile_label"),
+    sourceNote: stringValue(formData, "source_note") || null,
+    irpfBrackets: fiscalBracketsFromForm(formData),
+    actorUserId: membership.user.id,
+  })
+
+  revalidatePath("/settings")
+  revalidatePath("/estadisticas/facturacion")
+  redirect("/settings?saved=fiscal#fiscalidad")
 }

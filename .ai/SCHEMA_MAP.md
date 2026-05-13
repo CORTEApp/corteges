@@ -23,6 +23,7 @@
 - `00000000000020_crm_opportunities.sql`
 - `00000000000021_crm_teams_agenda.sql`
 - `00000000000019_sharepoint_binaries.sql`
+- `00000000000029_fiscal_tax_settings.sql`
 
 ## Tablas principales (`public`)
 - `user_profiles`: perfil por usuario (`id` referencia `auth.users`) con preferencias visuales y rol principal.
@@ -51,6 +52,7 @@
 - `mail_outboxes`: catalogo global de buzones Microsoft Graph propios o compartidos.
 - `mail_outbox_module_settings`: asignacion global de buzon activo por modulo (`billing`, `crm`).
 - `mail_dispatch_jobs`: cola trazable de envios de email con idempotencia.
+- `fiscal_tax_settings`: perfil fiscal privado por año con tramos IRPF configurables para estimaciones internas de `Estadisticas > Facturacion`.
 
 ## Capa SharePoint
 - `sharepoint_import.import_runs`: ejecuciones de importacion.
@@ -112,3 +114,4 @@
 - `supabase/queries/crm_teams_agenda_verification.sql`: assertions de RLS, grants, token table service-role-only, FK a oportunidades y ausencia de `anon`, `company_id` y `management`.
 - `supabase/queries/mail_outbox_module_settings_verification.sql`: assertions de asignacion por modulo, RLS, buzones activos y guardas de desactivacion.
 - `supabase/queries/sharepoint_binaries_verification.sql`: assertions de inventario binario, buckets privados, RLS/grants, enlaces documentales y ausencia de `company_id`/`management`.
+- `supabase/queries/fiscal_tax_settings_verification.sql`: assertions de RLS, grants, seed de 2026 y ausencia de tenants para configuracion fiscal.

@@ -1,13 +1,13 @@
 # Merge Audit Report
 
 - status: `PASS`
-- page routes detectadas: `43`
-- route handlers detectados: `6`
-- hrefs internas detectadas: `54`
+- page routes detectadas: `49`
+- route handlers detectados: `12`
+- hrefs internas detectadas: `64`
 - bloques en catálogo: `19`
 - items en registry: `2`
 - contrato visual: `checked`
-- ficheros runtime visual revisados: `128`
+- ficheros runtime visual revisados: `146`
 
 ## Rutas detectadas
 - /: app\page.tsx
@@ -26,14 +26,18 @@
 - /crm/oportunidades/[id]/edit: app\(app)\crm\oportunidades\[id]\edit\page.tsx
 - /crm/oportunidades/nuevo: app\(app)\crm\oportunidades\nuevo\page.tsx
 - /dashboard: app\(app)\dashboard\page.tsx
+- /estadisticas/facturacion: app\(app)\estadisticas\facturacion\page.tsx
+- /facturacion/aprobacion: app\(app)\facturacion\aprobacion\page.tsx
 - /facturacion/facturables: app\(app)\facturacion\facturables\page.tsx
 - /facturacion/facturables/[id]: app\(app)\facturacion\facturables\[id]\page.tsx
 - /facturacion/facturables/[id]/edit: app\(app)\facturacion\facturables\[id]\edit\page.tsx
 - /facturacion/facturables/nuevo: app\(app)\facturacion\facturables\nuevo\page.tsx
 - /facturacion/facturas: app\(app)\facturacion\facturas\page.tsx
 - /facturacion/facturas/[id]: app\(app)\facturacion\facturas\[id]\page.tsx
+- /facturacion/facturas/[id]/plantilla: app\(print)\facturacion\facturas\[id]\plantilla\page.tsx
 - /facturacion/proformas: app\(app)\facturacion\proformas\page.tsx
 - /facturacion/proformas/[id]: app\(app)\facturacion\proformas\[id]\page.tsx
+- /facturacion/proformas/[id]/plantilla: app\(print)\facturacion\proformas\[id]\plantilla\page.tsx
 - /facturacion/proformas/nuevo: app\(app)\facturacion\proformas\nuevo\page.tsx
 - /facturacion/suscripciones: app\(app)\facturacion\suscripciones\page.tsx
 - /facturacion/suscripciones/[id]: app\(app)\facturacion\suscripciones\[id]\page.tsx
@@ -43,6 +47,8 @@
 - /gastos/individuales/[id]: app\(app)\gastos\individuales\[id]\page.tsx
 - /gastos/individuales/[id]/edit: app\(app)\gastos\individuales\[id]\edit\page.tsx
 - /gastos/individuales/nuevo: app\(app)\gastos\individuales\nuevo\page.tsx
+- /gastos/recepcion: app\(app)\gastos\recepcion\page.tsx
+- /gastos/recepcion/[id]: app\(app)\gastos\recepcion\[id]\page.tsx
 - /perfil: app\(app)\perfil\page.tsx
 - /proveedores: app\(app)\proveedores\page.tsx
 - /proveedores/[id]: app\(app)\proveedores\[id]\page.tsx

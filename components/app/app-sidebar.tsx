@@ -6,6 +6,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
   Building2,
+  ChartColumnIncreasing,
   ChevronLeft,
   ChevronRight,
   ClipboardCheck,
@@ -87,6 +88,12 @@ const navGroups: readonly NavGroupConfig[] = [
       { href: "/facturacion/aprobacion", label: "Aprobacion", icon: ClipboardCheck, roles: ["master", "admin"] },
       { href: "/facturacion/facturables", label: "Facturables", icon: ReceiptText },
       { href: "/facturacion/suscripciones", label: "Suscripciones", icon: RefreshCw },
+    ],
+  },
+  {
+    label: "Estadísticas",
+    items: [
+      { href: "/estadisticas/facturacion", label: "Facturación", icon: ChartColumnIncreasing },
     ],
   },
   {
