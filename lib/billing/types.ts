@@ -198,6 +198,8 @@ export type BillingSubscription = {
   end_date: string | null
   quantity: number | string
   recurring_total_amount: number | string
+  apply_vat: boolean
+  vat_rate: number | string
   currency: string
   sharepoint_site_id: string | null
   sharepoint_list_id: string | null
@@ -224,4 +226,86 @@ export type BillingSubscriptionDetail = {
 export type BillingSubscriptionFormOptions = {
   clients: BillingClientOption[]
   facturables: BillingFacturableOption[]
+}
+
+export const BILLING_INVOICE_APPROVAL_STATUSES = [
+  "pending",
+  "processing",
+  "sent",
+  "failed",
+  "cancelled",
+] as const
+
+export type BillingInvoiceApprovalStatus = (typeof BILLING_INVOICE_APPROVAL_STATUSES)[number]
+
+export type BillingInvoiceApprovalBatch = {
+  id: string
+  period_start: string
+  period_end: string
+  status: "open" | "closed" | "failed"
+  source: "manual" | "cron"
+  candidate_count: number
+  total_amount: number | string
+  last_error: string | null
+  created_by: string | null
+  updated_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type BillingInvoiceApprovalCandidate = {
+  id: string
+  batch_id: string
+  period_start: string
+  period_end: string
+  client_group_key: string
+  client_id: string | null
+  client_name: string
+  client_tax_id: string | null
+  billing_email: string | null
+  currency: string
+  subtotal_amount: number | string
+  tax_amount: number | string
+  total_amount: number | string
+  status: BillingInvoiceApprovalStatus
+  invoice_id: string | null
+  mail_job_id: string | null
+  last_error: string | null
+  approved_by: string | null
+  approved_at: string | null
+  sent_at: string | null
+  cancelled_by: string | null
+  cancelled_at: string | null
+  created_by: string | null
+  updated_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type BillingInvoiceApprovalLine = {
+  id: string
+  candidate_id: string
+  subscription_id: string | null
+  line_index: number
+  facturable_id: string | null
+  code: string | null
+  description: string
+  quantity: number | string
+  unit_price: number | string
+  vat_rate: number | string
+  unit_type: BillingFacturableUnit
+  subtotal_amount: number | string
+  tax_amount: number | string
+  total_amount: number | string
+  currency: string
+  created_at: string
+}
+
+export type BillingInvoiceApprovalCandidateDetail = BillingInvoiceApprovalCandidate & {
+  lines: BillingInvoiceApprovalLine[]
+}
+
+export type BillingInvoiceApprovalPageData = {
+  batch: BillingInvoiceApprovalBatch | null
+  candidates: BillingInvoiceApprovalCandidateDetail[]
 }

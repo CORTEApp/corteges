@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation"
 
 import type { ClientRecord } from "@/lib/clients/types"
+import { createAdminClient } from "@/lib/supabase/admin"
 import { createClient } from "@/lib/supabase/server"
 import { requireBillingUser } from "@/lib/billing/data"
 import type { BillingDocument, BillingDocumentLine, BillingDocumentType } from "@/lib/billing/types"
@@ -73,4 +74,55 @@ export async function requireBillingDocumentPrintPayload(
       client: (clientData as ClientRecord | null) ?? null,
     }),
   }
+}
+
+export async function loadBillingDocumentPrintPayloadAdmin(
+  documentId: string,
+  expectedType: BillingDocumentType,
+): Promise<BillingDocumentPrintPayload> {
+  const supabase = createAdminClient()
+
+  const { data: documentData, error: documentError } = await supabase
+    .from("billing_documents")
+    .select("*")
+    .eq("id", documentId)
+    .eq("document_type", expectedType)
+    .maybeSingle()
+
+  if (documentError) {
+    throw new Error(documentError.message)
+  }
+
+  if (!documentData) {
+    throw new Error("Documento de facturacion no encontrado.")
+  }
+
+  const document = documentData as BillingDocument
+  const [
+    { data: linesData, error: linesError },
+    { data: clientData, error: clientError },
+  ] = await Promise.all([
+    supabase
+      .from("billing_document_lines")
+      .select("*")
+      .eq("document_id", document.id)
+      .order("line_index", { ascending: true }),
+    document.client_id
+      ? supabase.from("clients").select("*").eq("id", document.client_id).maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
+  ])
+
+  if (linesError) {
+    throw new Error(linesError.message)
+  }
+
+  if (clientError) {
+    throw new Error(clientError.message)
+  }
+
+  return buildBillingDocumentPrintPayload({
+    document,
+    lines: (linesData ?? []) as BillingDocumentLine[],
+    client: (clientData as ClientRecord | null) ?? null,
+  })
 }

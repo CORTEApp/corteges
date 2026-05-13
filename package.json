@@ -32,6 +32,7 @@
     "sharepoint:billing-pdfs:all": "npm run sharepoint:billing-pdfs:download && npm run sharepoint:billing-pdfs:upload:dry-run && npm run sharepoint:billing-pdfs:upload"
   },
   "dependencies": {
+    "@sparticuz/chromium": "^148.0.0",
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.50.0",
     "class-variance-authority": "^0.7.1",
@@ -40,6 +41,7 @@
     "next": "16.1.6",
     "next-themes": "^0.4.6",
     "playwright": "^1.60.0",
+    "playwright-core": "^1.60.0",
     "radix-ui": "^1.4.3",
     "react": "19.2.3",
     "react-dom": "19.2.3",

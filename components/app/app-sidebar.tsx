@@ -8,6 +8,7 @@ import {
   Building2,
   ChevronLeft,
   ChevronRight,
+  ClipboardCheck,
   ContactRound,
   Database,
   FileCheck2,
@@ -81,6 +82,7 @@ const navGroups: readonly NavGroupConfig[] = [
     items: [
       { href: "/facturacion/proformas", label: "Proformas", icon: FileClock },
       { href: "/facturacion/facturas", label: "Facturas", icon: FileCheck2 },
+      { href: "/facturacion/aprobacion", label: "Aprobacion", icon: ClipboardCheck, roles: ["master", "admin"] },
       { href: "/facturacion/facturables", label: "Facturables", icon: ReceiptText },
       { href: "/facturacion/suscripciones", label: "Suscripciones", icon: RefreshCw },
     ],

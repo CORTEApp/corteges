@@ -49,18 +49,22 @@ export function SubscriptionForm({
   const initialTotal =
     subscription?.recurring_total_amount ??
     roundTotal(toNumber(initialFacturable?.unit_price) * toNumber(initialQuantity))
+  const initialApplyVat = subscription?.apply_vat ?? true
   const [clientId, setClientId] = useState(subscription?.client_id ?? initialClient?.id ?? "")
   const [facturableId, setFacturableId] = useState(subscription?.facturable_id ?? initialFacturable?.id ?? "")
   const [email, setEmail] = useState(subscription?.billing_email ?? initialClient?.billing_email ?? "")
   const [description, setDescription] = useState(subscription?.description ?? initialFacturable?.description ?? "")
   const [quantity, setQuantity] = useState(initialQuantity)
   const [total, setTotal] = useState(numberFieldValue(initialTotal, 0))
+  const [applyVat, setApplyVat] = useState(initialApplyVat)
+  const [vatRate, setVatRate] = useState(numberFieldValue(subscription?.vat_rate, 21))
   const [totalTouched, setTotalTouched] = useState(Boolean(subscription))
 
   const clientById = useMemo(() => new Map(clients.map((client) => [client.id, client])), [clients])
   const facturableById = useMemo(() => new Map(facturables.map((facturable) => [facturable.id, facturable])), [facturables])
   const selectedFacturable = facturableById.get(facturableId)
   const calculatedTotal = roundTotal(toNumber(selectedFacturable?.unit_price) * toNumber(quantity))
+  const taxPreview = applyVat ? roundTotal(toNumber(total) * (toNumber(vatRate) / 100)) : 0
 
   return (
     <form action={saveSubscriptionAction} className="grid gap-8">
@@ -189,12 +193,47 @@ export function SubscriptionForm({
               required
             />
           </label>
+          <label
+            htmlFor="apply_vat"
+            className="flex min-h-11 items-center gap-3 rounded-[var(--radius-panel)] border border-border/80 bg-[color:var(--surface-2)] px-3.5 py-2.5 text-sm font-medium md:col-span-2"
+          >
+            <input
+              id="apply_vat"
+              name="apply_vat"
+              type="checkbox"
+              checked={applyVat}
+              onChange={(event) => {
+                setApplyVat(event.target.checked)
+              }}
+              className="size-4 accent-[color:var(--primary)]"
+            />
+            Aplica IVA
+          </label>
+          <label className="grid gap-2 md:col-span-2">
+            <span className="text-sm font-medium text-foreground">IVA %</span>
+            <Input
+              name="vat_rate"
+              type="number"
+              min="0"
+              max="100"
+              step="0.01"
+              inputMode="decimal"
+              value={applyVat ? vatRate : "0"}
+              onChange={(event) => {
+                setVatRate(event.target.value)
+              }}
+              disabled={!applyVat}
+              required={applyVat}
+            />
+          </label>
         </div>
 
-        <div className="mt-5 grid gap-3 rounded-[var(--radius-panel)] border border-primary/15 bg-primary/8 p-4 md:grid-cols-3">
+        <div className="mt-5 grid gap-3 rounded-[var(--radius-panel)] border border-primary/15 bg-primary/8 p-4 md:grid-cols-2 xl:grid-cols-5">
           <TotalPill label="Precio base" value={toNumber(selectedFacturable?.unit_price)} />
           <TotalPill label="Calculado" value={calculatedTotal} />
-          <TotalPill label="Guardado" value={toNumber(total)} strong />
+          <TotalPill label="Base guardada" value={toNumber(total)} />
+          <TotalPill label="IVA estimado" value={taxPreview} />
+          <TotalPill label="Total con IVA" value={toNumber(total) + taxPreview} strong />
         </div>
       </section>
 

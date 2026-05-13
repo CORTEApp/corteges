@@ -36,6 +36,7 @@ export function SubscriptionFichaReadOnly({ subscription }: { subscription: Bill
           <DetailField label="Fin" value={formatDate(subscription.end_date)} />
           <DetailField label="Cantidad" value={formatAmount(subscription.quantity)} />
           <DetailField label="Total recurrente" value={`${formatAmount(subscription.recurring_total_amount)} €`} />
+          <DetailField label="IVA" value={subscription.apply_vat ? `${formatAmount(subscription.vat_rate)}%` : "No aplica"} />
           <DetailField label="Moneda" value={subscription.currency} />
         </DetailFieldGrid>
       </FormSection>

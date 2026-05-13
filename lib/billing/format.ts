@@ -2,6 +2,7 @@ import type {
   BillingDocument,
   BillingDocumentStatus,
   BillingFacturable,
+  BillingInvoiceApprovalStatus,
   BillingPaymentMethod,
   BillingPaymentStatus,
   BillingSubscription,
@@ -117,6 +118,30 @@ export function billingPaymentStatusTone(status: BillingPaymentStatus) {
 
 export function billingDocumentKindLabel(document: Pick<BillingDocument, "document_type">) {
   return document.document_type === "proforma" ? "Proforma" : "Factura"
+}
+
+export const billingInvoiceApprovalStatusLabels: Record<BillingInvoiceApprovalStatus, string> = {
+  pending: "Pendiente",
+  processing: "Procesando",
+  sent: "Enviada",
+  failed: "Fallida",
+  cancelled: "Cancelada",
+}
+
+export function billingInvoiceApprovalStatusTone(status: BillingInvoiceApprovalStatus) {
+  if (status === "sent") {
+    return "success" as const
+  }
+
+  if (status === "failed" || status === "cancelled") {
+    return "danger" as const
+  }
+
+  if (status === "processing") {
+    return "info" as const
+  }
+
+  return "warning" as const
 }
 
 export function formatDate(value?: string | null) {

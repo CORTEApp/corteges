@@ -122,6 +122,7 @@ export function SubscriptionsTable({ subscriptions }: { subscriptions: BillingSu
               <MobileRecordGrid className="grid-cols-2">
                 <MobileRecordField label="Inicio" value={formatDate(subscription.start_date)} />
                 <MobileRecordField label="Total" value={`${formatAmount(subscription.recurring_total_amount)} €`} />
+                <MobileRecordField label="IVA" value={subscription.apply_vat ? `${formatAmount(subscription.vat_rate)}%` : "No"} />
               </MobileRecordGrid>
             </MobileRecordCard>
           ))}
@@ -136,6 +137,7 @@ export function SubscriptionsTable({ subscriptions }: { subscriptions: BillingSu
                 <th className="px-4 py-3 text-left font-medium">Inicio</th>
                 <th className="px-4 py-3 text-left font-medium">Fin</th>
                 <th className="px-4 py-3 text-right font-medium">Cantidad</th>
+                <th className="px-4 py-3 text-right font-medium">IVA</th>
                 <th className="px-4 py-3 text-right font-medium">Total</th>
                 <th className="px-4 py-3 text-left font-medium">Estado</th>
                 <th className="px-4 py-3 text-right font-medium">Ficha</th>
@@ -163,6 +165,9 @@ export function SubscriptionsTable({ subscriptions }: { subscriptions: BillingSu
                   <td className="px-4 py-4 align-top text-foreground/85">{formatDate(subscription.start_date)}</td>
                   <td className="px-4 py-4 align-top text-foreground/85">{formatDate(subscription.end_date)}</td>
                   <td className="px-4 py-4 text-right align-top text-foreground/85">{formatAmount(subscription.quantity)}</td>
+                  <td className="px-4 py-4 text-right align-top text-foreground/85">
+                    {subscription.apply_vat ? `${formatAmount(subscription.vat_rate)}%` : "No"}
+                  </td>
                   <td className="px-4 py-4 text-right align-top font-semibold text-foreground">
                     {formatAmount(subscription.recurring_total_amount)} €
                   </td>

@@ -130,6 +130,12 @@ export async function saveSubscriptionAction(formData: FormData) {
     throw new Error("El total recurrente no puede ser negativo.")
   }
 
+  const applyVat = formData.get("apply_vat") === "on"
+  const vatRate = applyVat ? numberValue(formData, "vat_rate", 21) : 0
+  if (vatRate < 0 || vatRate > 100) {
+    throw new Error("El porcentaje de IVA debe estar entre 0 y 100.")
+  }
+
   const payload = {
     client_id: client.id,
     client_tax_id: client.tax_id,
@@ -142,6 +148,8 @@ export async function saveSubscriptionAction(formData: FormData) {
     end_date: endDate,
     quantity,
     recurring_total_amount: roundMoney(recurringTotal),
+    apply_vat: applyVat,
+    vat_rate: roundMoney(vatRate),
     currency: "EUR",
     updated_by: userId,
   }

@@ -13,3 +13,5 @@ tmp_next_bootstrap
 .sharepoint-export/
 .codex-logs/
 .runtime/
+
+.vercel
