@@ -1,10 +1,11 @@
 import Link from "next/link"
-import { AlertTriangle, Building2, Mail, PlugZap, Save, Settings2, ShieldCheck } from "lucide-react"
+import { AlertTriangle, Building2, Mail, PlugZap, Save, Send, Settings2, ShieldCheck } from "lucide-react"
 
 import {
   deactivateMailOutboxAction,
   saveMailOutboxAction,
   saveModuleOutboxSettingsAction,
+  testMailOutboxAction,
 } from "@/app/(app)/settings/actions"
 import { DetailField, DetailFieldGrid } from "@/components/detail-fields"
 import { ResourceListScreen } from "@/components/resource-screens"
@@ -17,8 +18,15 @@ import { FormSubmitButton } from "@/components/ui/form-submit-button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select } from "@/components/ui/select"
-import { MAIL_MODULE_LABELS, type MailModule, type MailOutbox, type MailOutboxMode, type MailOutboxModuleSetting, type MicrosoftOutboxConnection } from "@/lib/mail/types"
 import { listMailSettingsPageData } from "@/lib/mail/settings"
+import {
+  MAIL_MODULE_LABELS,
+  type MailModule,
+  type MailOutbox,
+  type MailOutboxMode,
+  type MailOutboxModuleSetting,
+  type MicrosoftOutboxConnection,
+} from "@/lib/mail/types"
 import { requireAdminAccess } from "@/lib/users/server"
 
 const OUTBOX_MODE_OPTIONS: Array<{ value: MailOutboxMode; label: string }> = [
@@ -57,6 +65,10 @@ function mailConnectionMap(connections: MicrosoftOutboxConnection[]) {
 
 function OutboxStatusBadge({ outbox }: { outbox: MailOutbox }) {
   return outbox.active ? <Badge tone="success">Activo</Badge> : <Badge tone="neutral">Inactivo</Badge>
+}
+
+function firstParam(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value
 }
 
 function OutboxForm({
@@ -212,6 +224,10 @@ export default async function SettingsPage({
   const connectionsByUserId = mailConnectionMap(microsoftConnections)
   const activeOutboxes = outboxes.filter((outbox) => outbox.active)
   const saved = params.saved === "outbox" || params.saved === "modules"
+  const testStatus = firstParam(params.test)
+  const testOutbox = firstParam(params.outbox)
+  const testRecipient = firstParam(params.to)
+  const testMessage = firstParam(params.message)
 
   return (
     <ResourceListScreen
@@ -219,7 +235,17 @@ export default async function SettingsPage({
         icon: <Settings2 className="size-6" aria-hidden="true" />,
         title: "Configuracion",
         subtitle: "Buzones Microsoft y asignacion global por modulo.",
-        actions: saved ? <Badge tone="success">Configuracion guardada</Badge> : null,
+        actions: (
+          <div className="flex flex-wrap gap-2">
+            {saved ? <Badge tone="success">Configuracion guardada</Badge> : null}
+            {testStatus === "sent" ? (
+              <Badge tone="success">Prueba enviada</Badge>
+            ) : null}
+            {testStatus === "failed" ? (
+              <Badge tone="danger">Prueba fallida</Badge>
+            ) : null}
+          </div>
+        ),
       }}
       metrics={[
         { label: "Buzones", value: String(outboxes.length), icon: <Mail className="size-4" aria-hidden="true" /> },
@@ -236,6 +262,16 @@ export default async function SettingsPage({
         },
       ]}
     >
+      {testStatus === "sent" ? (
+        <div className="rounded-[var(--radius-panel)] border border-primary/15 bg-primary/10 px-4 py-3 text-sm text-primary">
+          Prueba enviada desde <strong>{testOutbox}</strong> a <strong>{testRecipient}</strong>.
+        </div>
+      ) : null}
+      {testStatus === "failed" ? (
+        <div className="rounded-[var(--radius-panel)] border border-red-200/70 bg-red-50 px-4 py-3 text-sm text-red-800">
+          No se pudo probar el buzon: {testMessage}
+        </div>
+      ) : null}
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(22rem,0.55fr)]">
         <div className="grid gap-6">
           <FormSection
@@ -285,14 +321,25 @@ export default async function SettingsPage({
                             </div>
                             <p className="mt-1 break-all text-sm text-muted-foreground">{outbox.email_address}</p>
                           </div>
-                          {outbox.active ? (
-                            <form action={deactivateMailOutboxAction}>
-                              <input type="hidden" name="outbox_id" value={outbox.id} />
-                              <FormSubmitButton variant="outline" size="sm" pendingLabel="Desactivando...">
-                                Desactivar
-                              </FormSubmitButton>
-                            </form>
-                          ) : null}
+                          <div className="flex flex-wrap gap-2">
+                            {outbox.active ? (
+                              <form action={testMailOutboxAction}>
+                                <input type="hidden" name="outbox_id" value={outbox.id} />
+                                <FormSubmitButton variant="outline" size="sm" pendingLabel="Probando...">
+                                  <Send className="size-3.5" aria-hidden="true" />
+                                  Probar
+                                </FormSubmitButton>
+                              </form>
+                            ) : null}
+                            {outbox.active ? (
+                              <form action={deactivateMailOutboxAction}>
+                                <input type="hidden" name="outbox_id" value={outbox.id} />
+                                <FormSubmitButton variant="outline" size="sm" pendingLabel="Desactivando...">
+                                  Desactivar
+                                </FormSubmitButton>
+                              </form>
+                            ) : null}
+                          </div>
                         </div>
 
                         <DetailFieldGrid>

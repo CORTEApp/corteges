@@ -6,6 +6,7 @@ import { redirect } from "next/navigation"
 import {
   setMailOutboxActive,
   setModuleOutboxSettings,
+  testMailOutbox,
   upsertMailOutbox,
 } from "@/lib/mail/settings"
 import { type MailOutboxMode } from "@/lib/mail/types"
@@ -19,6 +20,11 @@ function stringValue(formData: FormData, key: string) {
 function checkboxValue(formData: FormData, key: string) {
   const value = formData.get(key)
   return value === "on" || value === "true" || value === "1"
+}
+
+function redirectUrlWithParams(params: Record<string, string>) {
+  const search = new URLSearchParams(params)
+  return `/settings?${search.toString()}`
 }
 
 export async function saveMailOutboxAction(formData: FormData) {
@@ -43,6 +49,29 @@ export async function deactivateMailOutboxAction(formData: FormData) {
 
   revalidatePath("/settings")
   redirect("/settings?saved=outbox")
+}
+
+export async function testMailOutboxAction(formData: FormData) {
+  const membership = await requireAdminAccess("/settings")
+  let redirectTo = "/settings"
+
+  try {
+    const result = await testMailOutbox(stringValue(formData, "outbox_id"), membership.user.id)
+    redirectTo = redirectUrlWithParams({
+      test: "sent",
+      outbox: result.outbox.email_address,
+      to: result.recipientEmail,
+    })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "No se pudo probar el buzon."
+    redirectTo = redirectUrlWithParams({
+      test: "failed",
+      message: message.slice(0, 240),
+    })
+  }
+
+  revalidatePath("/settings")
+  redirect(redirectTo)
 }
 
 export async function saveModuleOutboxSettingsAction(formData: FormData) {

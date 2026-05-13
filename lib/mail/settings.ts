@@ -2,6 +2,7 @@ import "server-only"
 
 import { createAdminClient } from "@/lib/supabase/admin"
 import { createClient } from "@/lib/supabase/server"
+import { sendMicrosoftMailForUser } from "@/lib/microsoft/graph"
 import {
   MAIL_MODULES,
   MAIL_OUTBOX_MODES,
@@ -33,6 +34,11 @@ export type UpsertMailOutboxInput = {
 export type SetModuleOutboxSettingsInput = {
   billingOutboxId?: string | null
   crmOutboxId?: string | null
+}
+
+export type TestMailOutboxResult = {
+  outbox: MailOutbox
+  recipientEmail: string
 }
 
 function normalizeText(value: string | null | undefined) {
@@ -70,6 +76,11 @@ function databaseErrorMessage(error: { code?: string; message?: string }) {
   }
 
   return error.message || "No se pudo guardar la configuracion de correo."
+}
+
+function truncateError(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error || "No se pudo probar el buzon.")
+  return message.replace(/Bearer\s+[A-Za-z0-9._~+/=-]+/gi, "Bearer [redacted]").slice(0, 1200)
 }
 
 export async function listMailOutboxes() {
@@ -255,6 +266,97 @@ export async function setMailOutboxActive(outboxId: string, active: boolean, act
   }
 
   return data as MailOutbox
+}
+
+export async function testMailOutbox(outboxId: string, actorUserId?: string | null): Promise<TestMailOutboxResult> {
+  const admin = createAdminClient()
+  const id = normalizeText(outboxId)
+
+  if (!id) {
+    throw new Error("Falta el buzon Microsoft.")
+  }
+
+  const { data: outboxData, error: outboxError } = await admin
+    .from("mail_outboxes")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle()
+
+  if (outboxError) {
+    throw new Error(outboxError.message)
+  }
+
+  if (!outboxData) {
+    throw new Error("Buzon emisor no encontrado.")
+  }
+
+  const outbox = outboxData as MailOutbox
+  if (!outbox.active) {
+    throw new Error("El buzon emisor no esta activo.")
+  }
+
+  const { data: connection, error: connectionError } = await admin
+    .from("microsoft_user_connections")
+    .select("user_id, microsoft_email, display_name, status")
+    .eq("user_id", outbox.connection_user_id)
+    .maybeSingle()
+
+  if (connectionError) {
+    throw new Error(connectionError.message)
+  }
+
+  if (!connection || connection.status !== "connected") {
+    throw new Error("La conexion Microsoft del buzon no esta conectada.")
+  }
+
+  const recipientEmail = normalizeText(connection.microsoft_email)
+  if (!recipientEmail) {
+    throw new Error("La conexion Microsoft no tiene email de destino para la prueba.")
+  }
+
+  try {
+    await sendMicrosoftMailForUser(outbox.connection_user_id, {
+      mailboxEmail: outbox.mode === "shared_mailbox" ? outbox.email_address : null,
+      subject: `[CORTE.Ges] Prueba buzon ${outbox.email_address}`,
+      bodyHtml: [
+        "<p>Prueba de envio desde CORTE.Ges.</p>",
+        `<p>Buzon: <strong>${outbox.email_address}</strong></p>`,
+        `<p>Fecha: ${new Date().toISOString()}</p>`,
+      ].join(""),
+      to: [{ email: recipientEmail, name: connection.display_name ?? recipientEmail }],
+      saveToSentItems: false,
+    })
+
+    const { data: updatedOutbox, error: updateError } = await admin
+      .from("mail_outboxes")
+      .update({
+        last_error: null,
+        updated_by: actorUserId ?? null,
+      })
+      .eq("id", outbox.id)
+      .select("*")
+      .single()
+
+    if (updateError) {
+      throw new Error(updateError.message)
+    }
+
+    return {
+      outbox: updatedOutbox as MailOutbox,
+      recipientEmail,
+    }
+  } catch (error) {
+    const message = truncateError(error)
+    await admin
+      .from("mail_outboxes")
+      .update({
+        last_error: message,
+        updated_by: actorUserId ?? null,
+      })
+      .eq("id", outbox.id)
+
+    throw new Error(message)
+  }
 }
 
 export async function getModuleOutbox(module: MailModule) {
