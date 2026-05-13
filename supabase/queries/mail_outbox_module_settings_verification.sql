@@ -30,7 +30,7 @@ begin
   if exists (
     select 1
     from public.mail_outbox_module_settings
-    where module not in ('billing', 'crm')
+    where module not in ('billing', 'crm', 'expense_invoice_intake')
   ) then
     raise exception 'Unexpected module in mail_outbox_module_settings';
   end if;

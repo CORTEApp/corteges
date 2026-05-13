@@ -79,6 +79,7 @@ export async function saveModuleOutboxSettingsAction(formData: FormData) {
   await setModuleOutboxSettings({
     billingOutboxId: stringValue(formData, "billing_outbox_id") || null,
     crmOutboxId: stringValue(formData, "crm_outbox_id") || null,
+    expenseInvoiceIntakeOutboxId: stringValue(formData, "expense_invoice_intake_outbox_id") || null,
   })
 
   revalidatePath("/settings")

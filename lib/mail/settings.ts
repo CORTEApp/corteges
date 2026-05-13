@@ -34,6 +34,7 @@ export type UpsertMailOutboxInput = {
 export type SetModuleOutboxSettingsInput = {
   billingOutboxId?: string | null
   crmOutboxId?: string | null
+  expenseInvoiceIntakeOutboxId?: string | null
 }
 
 export type TestMailOutboxResult = {
@@ -68,7 +69,7 @@ function databaseErrorMessage(error: { code?: string; message?: string }) {
   }
 
   if (error.message?.includes("Cannot deactivate an outbox assigned to a module")) {
-    return "Quita este buzon de Facturacion/CRM antes de desactivarlo."
+    return "Quita este buzon de los modulos asignados antes de desactivarlo."
   }
 
   if (error.message?.includes("inactive outbox")) {
@@ -170,7 +171,7 @@ async function assertOutboxCanBeDeactivated(admin: SupabaseAdminClient, outboxId
   }
 
   if ((data ?? []).length > 0) {
-    throw new Error("Quita este buzon de Facturacion/CRM antes de desactivarlo.")
+    throw new Error("Quita este buzon de los modulos asignados antes de desactivarlo.")
   }
 }
 
@@ -448,6 +449,7 @@ export async function setModuleOutboxSettings(input: SetModuleOutboxSettingsInpu
   const { error } = await supabase.rpc("set_mail_outbox_module_settings", {
     p_billing_outbox_id: nullableText(input.billingOutboxId),
     p_crm_outbox_id: nullableText(input.crmOutboxId),
+    p_expense_invoice_intake_outbox_id: nullableText(input.expenseInvoiceIntakeOutboxId),
   })
 
   if (error) {

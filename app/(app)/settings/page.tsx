@@ -39,7 +39,7 @@ const OUTBOX_MODE_LABELS: Record<MailOutboxMode, string> = {
   shared_mailbox: "Compartido",
 }
 
-const MODULES: MailModule[] = ["billing", "crm"]
+const MODULES: MailModule[] = ["billing", "crm", "expense_invoice_intake"]
 
 function connectionLabel(connection: MicrosoftOutboxConnection) {
   const identity = connection.display_name || connection.microsoft_email || connection.user_id
@@ -197,7 +197,7 @@ function ModuleAssignments({
         </div>
         {!activeOptions.length ? (
           <p className="rounded-[var(--radius-panel)] border border-amber-200/70 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-            Crea o reactiva un buzon antes de asignarlo a Facturacion o CRM.
+            Crea o reactiva un buzon antes de asignarlo a un modulo.
           </p>
         ) : null}
         <div className="flex justify-end">
@@ -259,6 +259,13 @@ export default async function SettingsPage({
           label: "CRM",
           value: settingsByModule.get("crm") ? "Asignado" : "Pendiente",
           description: settingsByModule.get("crm") ? outboxesById.get(settingsByModule.get("crm") ?? "")?.email_address : "Sin buzon",
+        },
+        {
+          label: "Recepcion",
+          value: settingsByModule.get("expense_invoice_intake") ? "Asignado" : "Pendiente",
+          description: settingsByModule.get("expense_invoice_intake")
+            ? outboxesById.get(settingsByModule.get("expense_invoice_intake") ?? "")?.email_address
+            : "Sin buzon",
         },
       ]}
     >
@@ -395,7 +402,7 @@ export default async function SettingsPage({
               </div>
               <div className="flex gap-3 rounded-[var(--radius-panel)] border border-border/80 bg-[color:var(--surface-2)] px-4 py-3">
                 <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-700" aria-hidden="true" />
-                <span>CRM queda preparado para futuros emails. Las reuniones de Teams no usan este buzon global.</span>
+                <span>CRM queda preparado para futuros emails. Recepcion usa lectura de adjuntos; Teams no usa este buzon global.</span>
               </div>
             </div>
           </FormSection>

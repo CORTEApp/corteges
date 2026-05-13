@@ -1,11 +1,12 @@
 export const MAIL_OUTBOX_PROVIDERS = ["microsoft_graph"] as const
 export const MAIL_OUTBOX_MODES = ["user_mailbox", "shared_mailbox"] as const
 export const MAIL_DISPATCH_STATUSES = ["queued", "sending", "sent", "failed", "cancelled"] as const
-export const MAIL_MODULES = ["billing", "crm"] as const
+export const MAIL_MODULES = ["billing", "crm", "expense_invoice_intake"] as const
 
 export const MAIL_MODULE_LABELS = {
   billing: "Facturación",
   crm: "CRM",
+  expense_invoice_intake: "Recepción facturas",
 } as const
 
 export type MailOutboxProvider = (typeof MAIL_OUTBOX_PROVIDERS)[number]

@@ -13,6 +13,7 @@ import {
   Database,
   FileCheck2,
   FileClock,
+  FileSearch,
   LockKeyhole,
   Menu,
   ReceiptText,
@@ -73,6 +74,7 @@ const navGroups: readonly NavGroupConfig[] = [
   {
     label: "Gastos",
     items: [
+      { href: "/gastos/recepcion", label: "Recepcion", icon: FileSearch, roles: ["master", "admin"] },
       { href: "/gastos/individuales", label: "Individuales", icon: WalletCards },
       { href: "/proveedores", label: "Proveedores", icon: Building2 },
     ],

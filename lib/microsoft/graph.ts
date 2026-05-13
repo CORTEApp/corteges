@@ -15,11 +15,18 @@ export const MICROSOFT_GRAPH_SCOPES = [
   "offline_access",
   "User.Read",
   "Calendars.ReadWrite",
+  "Mail.Read",
+  "Mail.Read.Shared",
   "Mail.Send",
   "Mail.Send.Shared",
 ]
 
-const MICROSOFT_GRAPH_MAIL_SCOPES = ["Mail.Send", "Mail.Send.Shared"] as const
+const MICROSOFT_GRAPH_MAIL_SCOPE_REQUIREMENTS = [
+  { scope: "Mail.Read", grants: ["Mail.Read", "Mail.ReadWrite"] },
+  { scope: "Mail.Read.Shared", grants: ["Mail.Read.Shared", "Mail.ReadWrite.Shared"] },
+  { scope: "Mail.Send", grants: ["Mail.Send"] },
+  { scope: "Mail.Send.Shared", grants: ["Mail.Send.Shared"] },
+] as const
 
 type MicrosoftTokenPayload = {
   access_token: string
@@ -95,6 +102,45 @@ export type SendMicrosoftMailInput = {
   bcc?: MicrosoftMailRecipient[]
   attachments?: MicrosoftMailAttachment[]
   saveToSentItems?: boolean
+}
+
+export type MicrosoftMailPdfAttachment = {
+  mailboxEmail: string | null
+  messageId: string
+  attachmentId: string
+  subject: string | null
+  receivedDateTime: string | null
+  senderEmail: string | null
+  senderName: string | null
+  name: string
+  contentType: string
+  size: number
+  contentBytes: string
+}
+
+type GraphCollection<T> = {
+  value?: T[]
+}
+
+type GraphMailMessage = {
+  id?: string
+  subject?: string | null
+  receivedDateTime?: string | null
+  from?: {
+    emailAddress?: {
+      address?: string | null
+      name?: string | null
+    } | null
+  } | null
+}
+
+type GraphFileAttachment = {
+  id?: string
+  name?: string | null
+  contentType?: string | null
+  size?: number | null
+  isInline?: boolean | null
+  contentBytes?: string | null
 }
 
 function envValue(...keys: string[]) {
@@ -239,8 +285,10 @@ async function graphFetch<T>(accessToken: string, path: string, init?: RequestIn
 }
 
 function missingMailScopes(scopes: string[] | null | undefined) {
-  const granted = new Set(scopes ?? [])
-  return MICROSOFT_GRAPH_MAIL_SCOPES.filter((scope) => !granted.has(scope))
+  const granted = new Set((scopes ?? []).map((scope) => scope.toLowerCase()))
+  return MICROSOFT_GRAPH_MAIL_SCOPE_REQUIREMENTS
+    .filter((requirement) => !requirement.grants.some((scope) => granted.has(scope.toLowerCase())))
+    .map((requirement) => requirement.scope)
 }
 
 function reconnectForMailScopesMessage(missing: readonly string[]) {
@@ -413,7 +461,6 @@ export async function getMicrosoftAccessTokenForUser(userId: string) {
         client_secret: config.clientSecret,
         grant_type: "refresh_token",
         refresh_token: decryptRefreshToken(connection.refresh_token_encrypted),
-        scope: scopesText(),
       }),
     )
 
@@ -422,7 +469,7 @@ export async function getMicrosoftAccessTokenForUser(userId: string) {
       .from("microsoft_user_connections")
       .update({
         ...(token.refresh_token ? { refresh_token_encrypted: encryptRefreshToken(token.refresh_token) } : {}),
-        scopes: (token.scope ?? scopesText()).split(/\s+/).filter(Boolean),
+        scopes: (token.scope ?? connection.scopes?.join(" ") ?? scopesText()).split(/\s+/).filter(Boolean),
         status: "connected",
         last_error: null,
         last_refreshed_at: new Date().toISOString(),
@@ -535,6 +582,84 @@ export async function createTeamsCalendarEvent(userId: string, input: CreateTeam
     iCalUId: typeof event.iCalUId === "string" ? event.iCalUId : null,
     raw: event,
   }
+}
+
+function mailboxBasePath(mailboxEmail?: string | null) {
+  const mailbox = mailboxEmail?.trim()
+  return mailbox ? `/users/${encodeURIComponent(mailbox)}` : "/me"
+}
+
+function isPdfAttachment(attachment: GraphFileAttachment) {
+  const name = attachment.name?.toLowerCase() ?? ""
+  const contentType = attachment.contentType?.toLowerCase() ?? ""
+  return !attachment.isInline && (name.endsWith(".pdf") || contentType.includes("pdf"))
+}
+
+export async function listMicrosoftPdfMailAttachmentsForUser(
+  userId: string,
+  input: { mailboxEmail?: string | null; maxMessages?: number } = {},
+): Promise<MicrosoftMailPdfAttachment[]> {
+  const accessToken = await getMicrosoftAccessTokenForUser(userId)
+  const top = Math.min(Math.max(input.maxMessages ?? 25, 1), 50)
+  const basePath = mailboxBasePath(input.mailboxEmail)
+  const messageParams = new URLSearchParams({
+    "$top": String(top),
+    "$filter": "hasAttachments eq true",
+    "$select": "id,subject,from,receivedDateTime,hasAttachments",
+    "$orderby": "receivedDateTime desc",
+  })
+  const messages = await graphFetch<GraphCollection<GraphMailMessage>>(
+    accessToken,
+    `${basePath}/mailFolders/inbox/messages?${messageParams.toString()}`,
+  )
+  const results: MicrosoftMailPdfAttachment[] = []
+
+  for (const message of messages.value ?? []) {
+    if (!message.id) {
+      continue
+    }
+
+    const attachmentParams = new URLSearchParams({
+      "$select": "id,name,contentType,size,isInline",
+    })
+    const attachments = await graphFetch<GraphCollection<GraphFileAttachment>>(
+      accessToken,
+      `${basePath}/messages/${encodeURIComponent(message.id)}/attachments?${attachmentParams.toString()}`,
+    )
+
+    for (const attachment of attachments.value ?? []) {
+      if (!attachment.id || !isPdfAttachment(attachment)) {
+        continue
+      }
+
+      const fileAttachment = attachment.contentBytes
+        ? attachment
+        : await graphFetch<GraphFileAttachment>(
+            accessToken,
+            `${basePath}/messages/${encodeURIComponent(message.id)}/attachments/${encodeURIComponent(attachment.id)}`,
+          )
+
+      if (!fileAttachment.contentBytes) {
+        continue
+      }
+
+      results.push({
+        mailboxEmail: input.mailboxEmail?.trim() || null,
+        messageId: message.id,
+        attachmentId: fileAttachment.id ?? attachment.id,
+        subject: message.subject ?? null,
+        receivedDateTime: message.receivedDateTime ?? null,
+        senderEmail: message.from?.emailAddress?.address ?? null,
+        senderName: message.from?.emailAddress?.name ?? null,
+        name: fileAttachment.name ?? attachment.name ?? "factura.pdf",
+        contentType: fileAttachment.contentType ?? attachment.contentType ?? "application/pdf",
+        size: fileAttachment.size ?? attachment.size ?? 0,
+        contentBytes: fileAttachment.contentBytes,
+      })
+    }
+  }
+
+  return results
 }
 
 function mailRecipient(recipient: MicrosoftMailRecipient) {
