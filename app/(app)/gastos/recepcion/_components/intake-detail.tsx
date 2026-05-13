@@ -157,6 +157,29 @@ export function ExpenseInvoiceIntakeReview({ detail }: { detail: ExpenseInvoiceI
             <CardDescription>Original recibido y texto extraido del PDF.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">
+            {primaryDocument ? (
+              <section className="overflow-hidden rounded-[var(--radius-panel)] border border-border/80 bg-[color:var(--surface-2)]/50">
+                <div className="flex flex-col gap-3 border-b border-border/70 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                  <SectionTitle title="Previsualizacion PDF" note={primaryDocument.file_name} />
+                  <Button asChild size="sm" variant="outline">
+                    <Link href={`/gastos/recepcion/${item.id}/documentos/${primaryDocument.id}`} target="_blank">
+                      <ExternalLink aria-hidden="true" />
+                      Abrir
+                    </Link>
+                  </Button>
+                </div>
+                <iframe
+                  title={`Previsualizacion de ${primaryDocument.file_name}`}
+                  src={`/gastos/recepcion/${item.id}/documentos/${primaryDocument.id}`}
+                  className="h-[34rem] w-full border-0 bg-white md:h-[42rem]"
+                />
+              </section>
+            ) : (
+              <div className="rounded-[var(--radius-panel)] border border-amber-200/80 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900">
+                No hay PDF asociado a esta recepcion.
+              </div>
+            )}
+
             <div className="grid gap-3 sm:grid-cols-2">
               <Info label="Estado" value={<StatusBadge status={item.status} />} />
               <Info label="Origen" value={invoiceIntakeSourceLabels[item.source_kind]} />

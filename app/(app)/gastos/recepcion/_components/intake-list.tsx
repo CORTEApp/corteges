@@ -68,7 +68,7 @@ export function ExpenseInvoiceIntakePanel({
     >
       {notice}
 
-      <form action={uploadExpenseInvoiceIntakeAction} encType="multipart/form-data" className="space-y-3 rounded-[var(--radius-panel)] border border-dashed border-border bg-[color:var(--surface-2)]/65 p-3.5">
+      <form action={uploadExpenseInvoiceIntakeAction} className="space-y-3 rounded-[var(--radius-panel)] border border-dashed border-border bg-[color:var(--surface-2)]/65 p-3.5">
         <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
           <UploadCloud className="size-4 text-primary" aria-hidden="true" />
           Subida manual
