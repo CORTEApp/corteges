@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { ArrowLeft, FileCheck2 } from "lucide-react"
+import { ArrowLeft, Eye, FileCheck2, FileDown } from "lucide-react"
 
 import { BillingDocumentDetailView } from "@/app/(app)/facturacion/_components/billing-document-detail"
 import { ResourceDetailScreen } from "@/components/resource-screens"
@@ -27,12 +27,26 @@ export default async function FacturaDetailPage({
         title: document.document_number,
         subtitle: `${document.client_name} · ${formatDate(document.issue_date)}`,
         actions: (
-          <Button asChild variant="outline">
-            <Link href="/facturacion/facturas">
-              <ArrowLeft aria-hidden="true" />
-              Facturas
-            </Link>
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button asChild>
+              <Link href={`/facturacion/facturas/${document.id}/pdf`}>
+                <FileDown aria-hidden="true" />
+                Descargar PDF
+              </Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href={`/facturacion/facturas/${document.id}/plantilla`}>
+                <Eye aria-hidden="true" />
+                Ver plantilla
+              </Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href="/facturacion/facturas">
+                <ArrowLeft aria-hidden="true" />
+                Facturas
+              </Link>
+            </Button>
+          </div>
         ),
       }}
       metrics={[

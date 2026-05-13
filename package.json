@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "audit:ui-system": "python tools/ui_system_audit.py --root . --report MERGE_AUDIT_REPORT.md",
-    "audit:visual": "python tools/ui_system_audit.py --root . --report MERGE_AUDIT_REPORT.md",
+    "audit:billing-pdf": "node tools/audit_billing_pdf.mjs",
+    "audit:visual": "npm run audit:ui-system && npm run audit:billing-pdf",
     "auth:master": "node tools/bootstrap_master_user.mjs",
     "sharepoint:export": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/sharepoint_export.ps1",
     "sharepoint:graph-export": "node tools/sharepoint_graph_export.mjs",
@@ -38,6 +39,7 @@
     "lucide-react": "^0.511.0",
     "next": "16.1.6",
     "next-themes": "^0.4.6",
+    "playwright": "^1.60.0",
     "radix-ui": "^1.4.3",
     "react": "19.2.3",
     "react-dom": "19.2.3",
@@ -51,6 +53,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
+    "sharp": "^0.34.5",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

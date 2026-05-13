@@ -138,7 +138,7 @@ export type BillingDocumentFile = {
   file_size: number | string
   storage_bucket: string
   storage_path: string
-  source_kind: "upload" | "sharepoint"
+  source_kind: "upload" | "sharepoint" | "generated"
   source_sha256: string | null
   source_url: string | null
   source_downloaded_at: string | null

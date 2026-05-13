@@ -111,17 +111,17 @@ export function BillingDocumentDetailView({
           </CardContent>
         </Card>
 
-        {document.document_type === "invoice" && files.length > 0 ? (
+        {files.length > 0 ? (
           <Card>
             <CardHeader>
               <CardTitle>Documentos</CardTitle>
-              <CardDescription>Adjuntos historicos recuperados desde SharePoint.</CardDescription>
+              <CardDescription>Adjuntos historicos y PDFs generados del documento.</CardDescription>
             </CardHeader>
             <CardContent className="grid gap-3">
               {files.map((file) => (
                 <Link
                   key={file.id}
-                  href={`/facturacion/facturas/${document.id}/documentos/${file.id}`}
+                  href={`/facturacion/${isProforma ? "proformas" : "facturas"}/${document.id}/documentos/${file.id}`}
                   className="grid gap-2 rounded-[var(--radius-panel)] border border-border/80 bg-[color:var(--surface-2)] p-4 no-underline transition hover:bg-[color:var(--surface-3)] md:grid-cols-[1fr_auto_auto] md:items-center"
                 >
                   <span className="min-w-0">
@@ -130,7 +130,7 @@ export function BillingDocumentDetailView({
                       <span className="truncate">{file.file_name}</span>
                     </span>
                     <span className="mt-1 block text-xs text-muted-foreground">
-                      {file.source_kind === "sharepoint" ? "Origen SharePoint" : "Subido a CORTE.Ges"}
+                      {billingFileSourceLabel(file.source_kind)}
                       {file.source_sha256 ? ` · ${file.source_sha256.slice(0, 12)}` : ""}
                     </span>
                   </span>
@@ -217,6 +217,18 @@ export function BillingDocumentDetailView({
       </aside>
     </div>
   )
+}
+
+function billingFileSourceLabel(sourceKind: BillingDocumentDetail["files"][number]["source_kind"]) {
+  if (sourceKind === "sharepoint") {
+    return "Origen SharePoint"
+  }
+
+  if (sourceKind === "generated") {
+    return "PDF generado"
+  }
+
+  return "Subido a CORTE.Ges"
 }
 
 function PaymentForm({
