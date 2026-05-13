@@ -20,6 +20,8 @@ que deben reservar numeros.
 La base preparada para envios usa Microsoft Graph, no SMTP.
 
 - `public.mail_outboxes` define los buzones emisores disponibles.
+- Las conexiones Microsoft existentes se backfillean como buzones propios
+  activos cuando tienen `microsoft_email`.
 - `public.mail_outbox_module_settings` asigna el buzon activo que usa cada
   modulo operativo. De momento los modulos canonicos son `billing` y `crm`.
 - `public.set_mail_outbox_module_settings` guarda Facturacion y CRM en una
