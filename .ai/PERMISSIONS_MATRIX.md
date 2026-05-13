@@ -28,6 +28,9 @@
 | `public.crm_opportunity_activities` | usuario autenticado | usuario autenticado | usuario autenticado | no expuesto |
 | `public.crm_opportunity_meetings` | usuario autenticado | usuario autenticado | usuario autenticado | no expuesto |
 | `public.microsoft_user_connections` | service role | service role | service role | service role |
+| `public.mail_outboxes` | usuario autenticado | usuario autenticado | usuario autenticado | usuario autenticado |
+| `public.mail_outbox_module_settings` | usuario autenticado | usuario autenticado | usuario autenticado | usuario autenticado |
+| `public.mail_dispatch_jobs` | usuario autenticado | usuario autenticado | usuario autenticado | usuario autenticado |
 | `storage.objects/client-documents` | usuario autenticado con documento asociado | usuario autenticado si la ruta empieza por un `client_id` existente | usuario autenticado con documento asociado | usuario autenticado con documento asociado |
 | `storage.objects/expense-documents` | usuario autenticado con gasto asociado | usuario autenticado si la ruta empieza por un `expense_individual_id` existente | usuario autenticado con gasto asociado | usuario autenticado con gasto asociado |
 | `storage.objects/billing-documents` | usuario autenticado con factura asociada | service role | service role | service role |
@@ -51,4 +54,6 @@
 - CRM no expone borrado fisico de oportunidades ni contactos; el cierre se modela por estado (`closed_won`, `closed_lost`, `disqualified`).
 - Las conexiones Microsoft se gestionan solo server-side con service role; `authenticated` no puede leer ni escribir refresh tokens.
 - Las reuniones Teams de CRM son visibles para usuarios autenticados, pero no exponen borrado fisico en V1.
+- `/settings` solo es accesible para `master` y `admin`; los roles `usuario` redirigen a `/clientes`.
+- `mail_outbox_module_settings` solo puede apuntar a buzones activos y evita desactivar un buzon asignado a Facturacion o CRM.
 - La arquitectura no debe reintroducir `tenant_id`, `company_id`, `companies`, `company_memberships` ni bootstrap de empresa sin petición explícita.

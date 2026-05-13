@@ -48,6 +48,9 @@
 - `crm_opportunity_activities`: historial de contactos por oportunidad, importado desde Prospectos o creado manualmente.
 - `microsoft_user_connections`: conexion Microsoft por usuario con refresh token cifrado; acceso exclusivo service role.
 - `crm_opportunity_meetings`: reuniones Teams/calendario vinculadas a oportunidades, con evento Graph, enlace Teams, asistentes, fechas y auditoria.
+- `mail_outboxes`: catalogo global de buzones Microsoft Graph propios o compartidos.
+- `mail_outbox_module_settings`: asignacion global de buzon activo por modulo (`billing`, `crm`).
+- `mail_dispatch_jobs`: cola trazable de envios de email con idempotencia.
 
 ## Capa SharePoint
 - `sharepoint_import.import_runs`: ejecuciones de importacion.
@@ -93,6 +96,7 @@
 - `has_app_role(text[])` / `is_master_user()`: helpers RLS para administracion de usuarios.
 - `next_billing_document_number(text, text, integer)`: reserva atomica de numero por tipo/serie/año.
 - `issue_invoice_from_paid_proforma(uuid, date)`: emite factura fiscal desde proforma pagada dentro de una transaccion con bloqueo.
+- `set_mail_outbox_module_settings(uuid, uuid)`: guarda en una transaccion los buzones asignados a Facturacion y CRM.
 
 ## Seeds y verificación
 - `supabase/seed.sql`: seed mínimo, sin datos de negocio ni bootstrap de empresa.
@@ -106,4 +110,5 @@
 - `supabase/queries/sharepoint_binaries_verification.sql`: assertions de inventario binario, buckets privados, RLS/grants, enlaces documentales y ausencia de `company_id`/`management`.
 - `supabase/queries/crm_opportunities_verification.sql`: assertions de RLS, grants, unicidad SharePoint, indice `lead_id`, ausencia de tenants y ausencia de deletes en oportunidades.
 - `supabase/queries/crm_teams_agenda_verification.sql`: assertions de RLS, grants, token table service-role-only, FK a oportunidades y ausencia de `anon`, `company_id` y `management`.
+- `supabase/queries/mail_outbox_module_settings_verification.sql`: assertions de asignacion por modulo, RLS, buzones activos y guardas de desactivacion.
 - `supabase/queries/sharepoint_binaries_verification.sql`: assertions de inventario binario, buckets privados, RLS/grants, enlaces documentales y ausencia de `company_id`/`management`.

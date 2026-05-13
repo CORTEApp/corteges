@@ -104,3 +104,12 @@ export async function requireMasterAccess(nextPath = "/usuarios") {
 
   redirect("/clientes")
 }
+
+export async function requireAdminAccess(nextPath = "/settings") {
+  const membership = await getAuthenticatedMembership(nextPath)
+  if (membership.roles.includes("master") || membership.roles.includes("admin")) {
+    return membership
+  }
+
+  redirect("/clientes")
+}

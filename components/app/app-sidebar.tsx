@@ -16,15 +16,30 @@ import {
   Menu,
   ReceiptText,
   RefreshCw,
+  Settings2,
   Target,
   UserRound,
   UsersRound,
   WalletCards,
   X,
+  type LucideIcon,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import type { AppRole } from "@/lib/users/roles"
+
+type NavItemConfig = {
+  href: string
+  label: string
+  icon: LucideIcon
+  roles?: readonly AppRole[]
+}
+
+type NavGroupConfig = {
+  label: string
+  items: readonly NavItemConfig[]
+}
 
 function BrandMark({ collapsed }: { collapsed?: boolean }) {
   return (
@@ -41,7 +56,7 @@ function BrandMark({ collapsed }: { collapsed?: boolean }) {
   )
 }
 
-const navGroups = [
+const navGroups: readonly NavGroupConfig[] = [
   {
     label: "Operaciones",
     items: [
@@ -73,6 +88,7 @@ const navGroups = [
   {
     label: "Administración",
     items: [
+      { href: "/settings", label: "Configuración", icon: Settings2, roles: ["master", "admin"] },
       { href: "/usuarios", label: "Usuarios", icon: UsersRound },
     ],
   },
@@ -89,7 +105,7 @@ function NavItem({
   collapsed,
   mobile = false,
 }: {
-  item: (typeof navGroups)[number]["items"][number]
+  item: NavItemConfig
   collapsed?: boolean
   mobile?: boolean
 }) {
@@ -142,10 +158,27 @@ function NavItem({
   )
 }
 
-function NavGroup({ collapsed, mobile = false }: { collapsed?: boolean; mobile?: boolean }) {
+function NavGroup({
+  collapsed,
+  mobile = false,
+  roles = [],
+}: {
+  collapsed?: boolean
+  mobile?: boolean
+  roles?: AppRole[]
+}) {
   return (
     <nav className={mobile ? "space-y-5 p-4" : "space-y-5 px-3 py-6"}>
-      {navGroups.map((group) => (
+      {navGroups.map((group) => {
+        const visibleItems = group.items.filter((item) => {
+          return !item.roles?.length || item.roles.some((role) => roles.includes(role))
+        })
+
+        if (!visibleItems.length) {
+          return null
+        }
+
+        return (
         <div key={group.label} className="mb-6">
           {!collapsed || mobile ? (
             <div className="mb-3 flex items-center gap-2 px-2 text-[0.72rem] font-semibold uppercase tracking-[0.2em] text-sidebar-foreground/55">
@@ -157,12 +190,13 @@ function NavGroup({ collapsed, mobile = false }: { collapsed?: boolean; mobile?:
           )}
 
           <div className="space-y-1.5">
-            {group.items.map((item) => (
+            {visibleItems.map((item) => (
               <NavItem key={item.href} item={item} collapsed={collapsed} mobile={mobile} />
             ))}
           </div>
         </div>
-      ))}
+        )
+      })}
     </nav>
   )
 }
@@ -171,10 +205,12 @@ export function AppSidebar({
   brandLabel = "CORTE.Ges",
   collapsed = false,
   onToggleCollapse,
+  roles = [],
 }: {
   brandLabel?: string
   collapsed?: boolean
   onToggleCollapse?: () => void
+  roles?: AppRole[]
 }) {
   const [open, setOpen] = useState(false)
 
@@ -206,7 +242,7 @@ export function AppSidebar({
           </div>
 
           <div className="min-h-0 flex-1 overflow-auto">
-            <NavGroup collapsed={collapsed} />
+            <NavGroup collapsed={collapsed} roles={roles} />
           </div>
 
           <div className={cn("border-t border-sidebar-border/80 px-3 py-3", collapsed ? "space-y-2" : "space-y-3")}>
@@ -258,7 +294,7 @@ export function AppSidebar({
               </Button>
             </div>
             <div className="min-h-0 flex-1 overflow-auto" onClick={() => setOpen(false)}>
-              <NavGroup mobile />
+              <NavGroup mobile roles={roles} />
             </div>
           </div>
         </div>

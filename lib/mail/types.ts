@@ -1,10 +1,17 @@
 export const MAIL_OUTBOX_PROVIDERS = ["microsoft_graph"] as const
 export const MAIL_OUTBOX_MODES = ["user_mailbox", "shared_mailbox"] as const
 export const MAIL_DISPATCH_STATUSES = ["queued", "sending", "sent", "failed", "cancelled"] as const
+export const MAIL_MODULES = ["billing", "crm"] as const
+
+export const MAIL_MODULE_LABELS = {
+  billing: "Facturación",
+  crm: "CRM",
+} as const
 
 export type MailOutboxProvider = (typeof MAIL_OUTBOX_PROVIDERS)[number]
 export type MailOutboxMode = (typeof MAIL_OUTBOX_MODES)[number]
 export type MailDispatchStatus = (typeof MAIL_DISPATCH_STATUSES)[number]
+export type MailModule = (typeof MAIL_MODULES)[number]
 
 export type MailOutbox = {
   id: string
@@ -42,5 +49,24 @@ export type MailDispatchJob = {
   created_by: string | null
   updated_by: string | null
   created_at: string
+  updated_at: string
+}
+
+export type MailOutboxModuleSetting = {
+  module: MailModule
+  outbox_id: string
+  created_by: string | null
+  updated_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type MicrosoftOutboxConnection = {
+  user_id: string
+  microsoft_email: string | null
+  display_name: string | null
+  status: "connected" | "reconnect_required"
+  last_error: string | null
+  connected_at: string | null
   updated_at: string
 }

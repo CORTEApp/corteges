@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin"
 import { sendMicrosoftMailForUser, type MicrosoftMailAttachment } from "@/lib/microsoft/graph"
 import type { BillingDocument, BillingDocumentFile } from "@/lib/billing/types"
+import { getModuleOutbox, listMailOutboxes } from "@/lib/mail/settings"
 import type { MailDispatchJob, MailOutbox } from "@/lib/mail/types"
 
 type EnqueueBillingDocumentEmailOptions = {
@@ -152,33 +153,26 @@ async function downloadAttachment(file: BillingDocumentFile): Promise<MicrosoftM
 }
 
 export async function listBillingOutboxes() {
-  const supabase = createAdminClient()
-  const { data, error } = await supabase
-    .from("mail_outboxes")
-    .select("*")
-    .eq("provider", "microsoft_graph")
-    .order("is_default_for_billing", { ascending: false })
-    .order("email_address", { ascending: true })
-
-  if (error) {
-    throw new Error(error.message)
-  }
-
-  return (data ?? []) as MailOutbox[]
+  return listMailOutboxes()
 }
 
 export async function enqueueBillingDocumentEmail(
   documentId: string,
-  outboxId: string,
+  outboxId?: string | null,
   options: EnqueueBillingDocumentEmailOptions = {},
 ) {
   const supabase = createAdminClient()
-  const [document, outbox, generatedPdf] = await Promise.all([
+  const [document, resolvedOutbox, generatedPdf] = await Promise.all([
     requireBillingDocument(documentId),
-    requireOutbox(outboxId),
+    outboxId ? requireOutbox(outboxId) : getModuleOutbox("billing"),
     latestGeneratedPdf(documentId),
   ])
 
+  if (!resolvedOutbox) {
+    throw new Error("Configura un buzon Microsoft para Facturacion en Configuracion.")
+  }
+
+  const outbox = resolvedOutbox
   if (!document.billing_email?.trim()) {
     throw new Error("El documento no tiene correo de cobro.")
   }

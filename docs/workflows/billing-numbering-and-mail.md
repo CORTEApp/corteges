@@ -20,13 +20,21 @@ que deben reservar numeros.
 La base preparada para envios usa Microsoft Graph, no SMTP.
 
 - `public.mail_outboxes` define los buzones emisores disponibles.
+- `public.mail_outbox_module_settings` asigna el buzon activo que usa cada
+  modulo operativo. De momento los modulos canonicos son `billing` y `crm`.
+- `public.set_mail_outbox_module_settings` guarda Facturacion y CRM en una
+  unica transaccion.
 - `public.mail_dispatch_jobs` registra la cola, estado, destinatarios, adjuntos,
   intentos y errores.
 - Los PDFs adjuntos salen de `public.billing_document_files` con
   `source_kind = 'generated'`.
-- Los helpers server-only viven en `lib/mail/billing.ts`:
+- Los helpers server-only de configuracion viven en `lib/mail/settings.ts`:
+  `listMailOutboxes`, `upsertMailOutbox`, `setModuleOutbox` y
+  `getModuleOutbox`.
+- Los helpers de facturacion viven en `lib/mail/billing.ts`:
   `listBillingOutboxes`, `enqueueBillingDocumentEmail` y
-  `sendQueuedBillingEmail`.
+  `sendQueuedBillingEmail`. Si no se pasa un buzon explicito,
+  `enqueueBillingDocumentEmail` resuelve `module = 'billing'`.
 
 Los buzones compartidos requieren permisos de Exchange Online para enviar como el
 buzon compartido y una conexion Microsoft con scopes `Mail.Send` y

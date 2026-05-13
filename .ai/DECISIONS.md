@@ -101,3 +101,10 @@
 8. `AppOnly` queda reservado para metadata/export cuando aplique; no es canonico para adjuntos de lista porque el tenant devuelve `Access is denied`. `Interactive` tampoco es canonico mientras la app Entra no tenga redirect URI valido (`AADSTS500113`).
 9. La subida canonica de PDFs de facturas usa `sharepoint_upload_binaries.mjs` filtrado a `Facturas` + `.pdf`, bucket `billing-documents` y tabla funcional `billing_document_files`, enlazando por `sharepoint_list_id + sharepoint_item_id` contra `billing_documents`.
 10. `sharepoint_import.binary_files` es inventario auxiliar de auditoria; si PostgREST no expone el schema `sharepoint_import`, se permite omitirlo sin bloquear el enlace operativo en `billing_document_files`.
+
+## 2026-05-13
+
+1. La configuracion operativa global de Microsoft vive en `/settings` y queda limitada a roles `master` y `admin`.
+2. `Perfil > Integraciones` conserva la conexion delegada del usuario; `/settings` solo decide que buzon usa cada modulo.
+3. `mail_outboxes` sigue siendo catalogo de buzones y `mail_outbox_module_settings` pasa a ser la fuente nueva para resolver `billing` y `crm`.
+4. Facturacion resuelve su buzon por `module='billing'` cuando no se pasa un buzon explicito. CRM queda preparado para futuros emails, sin cambiar el comportamiento de reuniones Teams.

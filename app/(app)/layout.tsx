@@ -1,9 +1,12 @@
 import { AppShell } from "@/components/app/app-shell"
+import { getAuthenticatedMembership } from "@/lib/users/server"
 
-export default function AppSurfaceLayout({
+export default async function AppSurfaceLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  return <AppShell>{children}</AppShell>
+  const membership = await getAuthenticatedMembership("/clientes")
+
+  return <AppShell roles={membership.roles}>{children}</AppShell>
 }

@@ -4,8 +4,9 @@ import { useState } from "react"
 
 import { AppSidebar } from "@/components/app/app-sidebar"
 import { cn } from "@/lib/utils"
+import type { AppRole } from "@/lib/users/roles"
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+export function AppShell({ children, roles = [] }: { children: React.ReactNode; roles?: AppRole[] }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
 
   return (
@@ -20,6 +21,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         brandLabel="CORTE.Ges"
         collapsed={sidebarCollapsed}
         onToggleCollapse={() => setSidebarCollapsed((value) => !value)}
+        roles={roles}
       />
       <main className="min-w-0 pb-8">{children}</main>
     </div>
