@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { CalendarDays, KeyRound, LogOut, Mail, Palette, PlugZap, RefreshCw, UserRound } from "lucide-react"
+import { CalendarDays, KeyRound, LogOut, Mail, Palette, PlugZap, RefreshCw, Save, UserRound } from "lucide-react"
 
 import { updateProfilePreferences, signOutAction } from "@/app/(app)/perfil/actions"
 import { disconnectMicrosoftAction } from "@/app/integraciones/microsoft/actions"
@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button"
 import { FormSection } from "@/components/ui/form-section"
 import { FormSectionTabPanel } from "@/components/ui/form-section-tabs"
 import { FormLoadingOverlay } from "@/components/ui/form-loading-overlay"
+import { FormPendingScreen } from "@/components/ui/form-pending-screen"
 import { FormSubmitButton } from "@/components/ui/form-submit-button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -23,6 +24,8 @@ import { getAuthenticatedMembership } from "@/lib/users/server"
 
 const MICROSOFT_PROFILE_NEXT = "/perfil#integraciones"
 const MICROSOFT_CONNECT_HREF = `/integraciones/microsoft/connect?next=${encodeURIComponent(MICROSOFT_PROFILE_NEXT)}`
+const PROFILE_PREFERENCES_FORM_ID = "profile-preferences-form"
+const PROFILE_SECURITY_FORM_ID = "profile-security-form"
 
 function normalizeLanguage(value: unknown) {
   return typeof value === "string" && ["es", "en", "ca"].includes(value) ? value : "es"
@@ -165,8 +168,15 @@ export default async function PerfilPage({
           <FormSection
             description="Selecciona el idioma visible de la UX y actualiza tus datos básicos de acceso."
             title="Preferencias personales"
+            action={
+              <Button type="submit" form={PROFILE_PREFERENCES_FORM_ID}>
+                <Save className="size-4" aria-hidden="true" />
+                Guardar preferencias
+              </Button>
+            }
           >
-            <form action={updateProfilePreferences} className="relative space-y-5">
+            <form id={PROFILE_PREFERENCES_FORM_ID} action={updateProfilePreferences} className="relative space-y-5">
+              <FormPendingScreen label="Guardando preferencias..." />
               <FormLoadingOverlay label="Guardando preferencias..." />
 
               <div className="space-y-2">
@@ -193,8 +203,6 @@ export default async function PerfilPage({
               <div className="rounded-[var(--radius-panel)] border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
                 El cambio de idioma se gestiona desde Mi perfil. Login, onboarding y shell del proyecto no deben ofrecer selectores alternativos de idioma.
               </div>
-
-              <FormSubmitButton pendingLabel="Guardando preferencias...">Guardar preferencias</FormSubmitButton>
             </form>
           </FormSection>
         </FormSectionTabPanel>
@@ -203,8 +211,15 @@ export default async function PerfilPage({
           <FormSection
             description="Actualiza tu contraseña sin tocar preferencias visuales."
             title="Seguridad"
+            action={
+              <Button type="submit" form={PROFILE_SECURITY_FORM_ID}>
+                <KeyRound className="size-4" aria-hidden="true" />
+                Actualizar contraseña
+              </Button>
+            }
           >
-            <form action={updateProfilePreferences} className="relative space-y-5">
+            <form id={PROFILE_SECURITY_FORM_ID} action={updateProfilePreferences} className="relative space-y-5">
+              <FormPendingScreen label="Actualizando contraseña..." />
               <FormLoadingOverlay label="Actualizando contraseña..." />
               <HiddenProfilePreferences
                 colorMode={colorMode}
@@ -223,7 +238,6 @@ export default async function PerfilPage({
                   <Input id="password_confirm" name="password_confirm" type="password" autoComplete="new-password" minLength={8} placeholder="Repite la contraseña" />
                 </div>
               </div>
-              <FormSubmitButton pendingLabel="Actualizando contraseña...">Actualizar contraseña</FormSubmitButton>
             </form>
           </FormSection>
         </FormSectionTabPanel>

@@ -354,19 +354,18 @@ export default async function BillingInvoiceApprovalPage({
         selected={firstParam(params.selected)}
       />
 
-      <form id="bulk-approve-form" action={approveSelectedInvoiceApprovalCandidatesAction}>
-        <input type="hidden" name="period" value={periodMonth} />
-      </form>
-
       <FormSection
         title="Candidatos"
         description="El cron solo prepara esta lista; la numeracion F se consume al aprobar."
         action={
           candidates.length ? (
-            <Button form="bulk-approve-form" type="submit" variant="outline">
-              <FileCheck2 className="size-4" aria-hidden="true" />
-              Aprobar seleccionadas
-            </Button>
+            <form id="bulk-approve-form" action={approveSelectedInvoiceApprovalCandidatesAction}>
+              <input type="hidden" name="period" value={periodMonth} />
+              <FormSubmitButton pendingLabel="Aprobando seleccionadas..." variant="outline">
+                <FileCheck2 className="size-4" aria-hidden="true" />
+                Aprobar seleccionadas
+              </FormSubmitButton>
+            </form>
           ) : null
         }
         contentClassName="p-0"

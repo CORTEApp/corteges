@@ -1,9 +1,9 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
-import { ArrowLeft, CalendarClock, Database, FileText, RefreshCw, Save } from "lucide-react"
+import { ArrowLeft, CalendarClock, FileText, RefreshCw, Save, Settings2 } from "lucide-react"
 
 import { SubscriptionForm } from "@/app/(app)/facturacion/suscripciones/_components/subscription-form"
-import { SubscriptionTraceReadOnly } from "@/app/(app)/facturacion/suscripciones/_components/subscription-readonly-sections"
+import { SubscriptionAdminReadOnly } from "@/app/(app)/facturacion/suscripciones/_components/subscription-readonly-sections"
 import { ResourceContentTabs } from "@/components/resource-content-tabs"
 import { ResourceEditScreen } from "@/components/resource-screens"
 import { Button } from "@/components/ui/button"
@@ -68,7 +68,7 @@ export default async function EditSubscriptionPage({
         defaultTab="datos"
         tabs={[
           { id: "datos", label: "Datos", icon: <FileText className="size-4" aria-hidden="true" /> },
-          { id: "trazabilidad", label: "Trazabilidad", icon: <Database className="size-4" aria-hidden="true" /> },
+          { id: "administracion", label: "Administracion", icon: <Settings2 className="size-4" aria-hidden="true" /> },
         ]}
       >
         <FormSectionTabPanel tabId="datos">
@@ -76,12 +76,12 @@ export default async function EditSubscriptionPage({
             subscription={subscription}
             clients={clients}
             facturables={facturables}
-            cancelHref={`/facturacion/suscripciones/${subscription.id}`}
+            formId={`subscription-edit-form-${subscription.id}`}
           />
         </FormSectionTabPanel>
 
-        <FormSectionTabPanel tabId="trazabilidad">
-          <SubscriptionTraceReadOnly subscription={subscription} />
+        <FormSectionTabPanel tabId="administracion">
+          <SubscriptionAdminReadOnly subscription={subscription} />
         </FormSectionTabPanel>
       </ResourceContentTabs>
     </ResourceEditScreen>

@@ -26,7 +26,6 @@ const compareFields: ResourceHistoryField<ClientHistoryEntry>[] = [
   { label: "Línea vigente", value: (entry) => entry.current_line },
   { label: "Lead", value: (entry) => entry.lead_id },
   { label: "Comentarios", value: (entry) => entry.comments },
-  { label: "Origen", value: (entry) => entry.source_kind === "manual" ? "Manual" : "SharePoint" },
 ]
 
 const snapshotSections: ResourceSnapshotSection<ClientHistoryEntry>[] = [
@@ -67,20 +66,6 @@ const snapshotSections: ResourceSnapshotSection<ClientHistoryEntry>[] = [
       { label: "Comentarios", value: (entry) => entry.comments },
     ],
   },
-  {
-    title: "Origen",
-    fields: [
-      { label: "Tipo", value: (entry) => entry.source_kind === "manual" ? "Manual" : "SharePoint" },
-      { label: "Clave", value: (entry) => entry.source_key },
-      { label: "List ID", value: (entry) => entry.sharepoint_list_id },
-      { label: "Item ID", value: (entry) => entry.sharepoint_item_id },
-      { label: "Unique ID", value: (entry) => entry.sharepoint_unique_id },
-      { label: "ETag", value: (entry) => entry.sharepoint_etag },
-      { label: "Creado", kind: "date", value: (entry) => entry.source_created_at },
-      { label: "Modificado", kind: "date", value: (entry) => entry.source_modified_at },
-      { label: "Importado", kind: "date", value: (entry) => entry.imported_at },
-    ],
-  },
 ]
 
 function effectiveDate(entry: ClientHistoryEntry): string | null {
@@ -99,7 +84,6 @@ export function ClientHistoryTimeline({
       history.map((entry) => ({
         id: entry.id,
         effectiveDate: effectiveDate(entry),
-        sourceItemId: entry.source_kind === "manual" ? "manual" : entry.sharepoint_item_id,
         current: entry.is_current || (currentHistoryEntryId != null && entry.id === currentHistoryEntryId),
         snapshot: entry,
       })),
@@ -113,7 +97,6 @@ export function ClientHistoryTimeline({
       entries={entries}
       modalTitle="Snapshot completo de cliente"
       snapshotSections={snapshotSections}
-      sourceLabel="Origen"
     />
   )
 }

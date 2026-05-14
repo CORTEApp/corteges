@@ -3,7 +3,7 @@ import { notFound } from "next/navigation"
 import { ArrowLeft, Building2, CalendarDays, Save } from "lucide-react"
 
 import { SupplierForm } from "@/app/(app)/proveedores/_components/supplier-form"
-import { SupplierTraceReadOnly } from "@/app/(app)/proveedores/_components/supplier-readonly-sections"
+import { SupplierAdminReadOnly } from "@/app/(app)/proveedores/_components/supplier-readonly-sections"
 import { ResourceEditScreen } from "@/components/resource-screens"
 import { Button } from "@/components/ui/button"
 import { formatSupplierDate, supplierPaymentMethodLabels } from "@/lib/suppliers/format"
@@ -22,6 +22,7 @@ export default async function EditSupplierPage({
   }
 
   const { supplier } = detail
+  const formId = `supplier-edit-form-${supplier.id}`
 
   return (
     <ResourceEditScreen
@@ -40,6 +41,10 @@ export default async function EditSupplierPage({
             <Button asChild variant="secondary">
               <Link href="/proveedores">Listado</Link>
             </Button>
+            <Button type="submit" form={formId}>
+              <Save aria-hidden="true" />
+              Guardar proveedor
+            </Button>
           </div>
         ),
       }}
@@ -51,8 +56,8 @@ export default async function EditSupplierPage({
       ]}
     >
       <div className="grid gap-6">
-        <SupplierForm supplier={supplier} cancelHref={`/proveedores/${supplier.id}`} />
-        <SupplierTraceReadOnly supplier={supplier} />
+        <SupplierForm actionsPlacement="page" formId={formId} supplier={supplier} />
+        <SupplierAdminReadOnly supplier={supplier} />
       </div>
     </ResourceEditScreen>
   )

@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { ConfirmSubmitButton } from "@/components/ui/confirm-submit-button"
 import { FormSection } from "@/components/ui/form-section"
+import { FormPendingScreen } from "@/components/ui/form-pending-screen"
 import { FormSubmitButton } from "@/components/ui/form-submit-button"
 import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
@@ -24,7 +25,6 @@ import {
   opportunityActivityTypes,
   opportunityMeetingKindLabels,
   opportunityMeetingKinds,
-  opportunityOriginLabel,
   opportunityStatusLabels,
   opportunityStatuses,
   opportunityStatusTone,
@@ -43,7 +43,6 @@ type HistoryItem = {
   at: string
   title: string
   kind: "activity" | "milestone"
-  sourceLabel: string
   tone: "neutral" | "success" | "warning" | "danger" | "info"
   activity?: CRMOpportunityActivity
   details?: string | null
@@ -115,6 +114,7 @@ export function OpportunityManagementSection({
   agendaItems: OpportunityAgendaItem[]
 }) {
   const detailPath = `/crm/oportunidades/${opportunity.id}`
+  const statusFormId = `opportunity-status-form-${opportunity.id}`
 
   return (
     <div className="grid gap-6">
@@ -126,12 +126,21 @@ export function OpportunityManagementSection({
       />
 
       <FormSection
-        action={<Badge tone={opportunityStatusTone(opportunity.status)}>{opportunityStatusLabels[opportunity.status]}</Badge>}
+        action={
+          <div className="flex flex-wrap justify-end gap-2">
+            <Badge tone={opportunityStatusTone(opportunity.status)}>{opportunityStatusLabels[opportunity.status]}</Badge>
+            <Button type="submit" form={statusFormId}>
+              <Route aria-hidden="true" />
+              Actualizar
+            </Button>
+          </div>
+        }
         className="border-l-4 border-l-primary"
         title="Estado y siguiente paso"
         description="Cambia el estado del pipeline y fija el proximo contacto sin salir de la oportunidad."
       >
-        <form action={updateOpportunityStatusAction} className="grid gap-4 md:grid-cols-[1fr_1fr_auto] md:items-end">
+        <form id={statusFormId} action={updateOpportunityStatusAction} className="grid gap-4 md:grid-cols-2">
+          <FormPendingScreen label="Actualizando oportunidad..." />
           <input type="hidden" name="opportunity_id" value={opportunity.id} />
           <input type="hidden" name="redirect_to" value={`${detailPath}#gestion`} />
           <label className="grid gap-2">
@@ -149,10 +158,6 @@ export function OpportunityManagementSection({
             <span className="text-sm font-medium text-foreground">Proximo contacto</span>
             <Input name="next_contact_at" type="datetime-local" defaultValue={dateTimeInputValue(opportunity.next_contact_at)} />
           </label>
-          <FormSubmitButton pendingLabel="Actualizando...">
-            <Route aria-hidden="true" />
-            Actualizar
-          </FormSubmitButton>
         </form>
       </FormSection>
 
@@ -495,9 +500,22 @@ function ActivityForm({
   title: string
   description: string
 }) {
+  const activityFormId = `opportunity-activity-form-${opportunity.id}`
+
   return (
-    <FormSection className="border-l-4 border-l-primary/70" title={title} description={description}>
-      <form action={saveOpportunityActivityAction} className="grid gap-4 md:grid-cols-6">
+    <FormSection
+      action={
+        <Button type="submit" form={activityFormId}>
+          <MessageSquarePlus aria-hidden="true" />
+          Guardar actividad
+        </Button>
+      }
+      className="border-l-4 border-l-primary/70"
+      title={title}
+      description={description}
+    >
+      <form id={activityFormId} action={saveOpportunityActivityAction} className="grid gap-4 md:grid-cols-6">
+        <FormPendingScreen label="Guardando actividad..." />
         <input type="hidden" name="opportunity_id" value={opportunity.id} />
         <input type="hidden" name="redirect_to" value={redirectTo} />
         <label className="grid gap-2 md:col-span-2">
@@ -543,12 +561,6 @@ function ActivityForm({
           <span className="text-sm font-medium text-foreground">Notas</span>
           <Textarea name="notes" />
         </label>
-        <div className="md:col-span-6">
-          <FormSubmitButton pendingLabel="Guardando...">
-            <MessageSquarePlus aria-hidden="true" />
-            Guardar actividad
-          </FormSubmitButton>
-        </div>
       </form>
     </FormSection>
   )
@@ -610,7 +622,6 @@ function OpportunityTimeline({
                 <Badge tone={item.tone}>{item.title}</Badge>
                 <span className="text-sm font-semibold text-foreground">{formatDateTime(item.at)}</span>
               </div>
-              <span className="text-xs text-muted-foreground">{item.sourceLabel}</span>
             </div>
             {item.activity ? (
               <>
@@ -640,8 +651,7 @@ function activityHistoryItem(activity: CRMOpportunityActivity): HistoryItem {
     at: activity.contact_at,
     title: opportunityActivityTypeLabels[activity.activity_type],
     kind: "activity",
-    sourceLabel: activity.source_kind === "sharepoint" ? "SharePoint" : "Manual",
-    tone: activity.source_kind === "sharepoint" ? "info" : "success",
+    tone: "success",
     activity,
   }
 }
@@ -654,7 +664,6 @@ function milestoneItems(opportunity: CRMOpportunityRecord): HistoryItem[] {
           at: opportunity.submitted_at,
           title: "Entrada",
           kind: "milestone",
-          sourceLabel: opportunityOriginLabel(opportunity),
           tone: "neutral",
           details: opportunity.request,
         }
@@ -665,7 +674,6 @@ function milestoneItems(opportunity: CRMOpportunityRecord): HistoryItem[] {
           at: opportunity.first_contact_at,
           title: "Primer contacto",
           kind: "milestone",
-          sourceLabel: opportunity.first_contact_method ?? "Pipeline",
           tone: "info",
           details: opportunity.comments,
         }
@@ -676,7 +684,6 @@ function milestoneItems(opportunity: CRMOpportunityRecord): HistoryItem[] {
           at: opportunity.qualified_at,
           title: "Cualificada",
           kind: "milestone",
-          sourceLabel: "Pipeline",
           tone: "success",
           details: opportunity.qualification_status,
         }
@@ -687,7 +694,6 @@ function milestoneItems(opportunity: CRMOpportunityRecord): HistoryItem[] {
           at: opportunity.diagnosis_booked_at,
           title: "Diagnostico agendado",
           kind: "milestone",
-          sourceLabel: "Pipeline",
           tone: "warning",
           details: null,
         }
@@ -698,7 +704,6 @@ function milestoneItems(opportunity: CRMOpportunityRecord): HistoryItem[] {
           at: opportunity.diagnosis_attended_at,
           title: "Diagnostico hecho",
           kind: "milestone",
-          sourceLabel: "Pipeline",
           tone: "warning",
           details: null,
         }
@@ -709,7 +714,6 @@ function milestoneItems(opportunity: CRMOpportunityRecord): HistoryItem[] {
           at: opportunity.proposal_sent_at,
           title: "Propuesta enviada",
           kind: "milestone",
-          sourceLabel: "Pipeline",
           tone: "warning",
           details: formatOpportunityMoney(opportunity.initial_price),
         }
@@ -720,7 +724,6 @@ function milestoneItems(opportunity: CRMOpportunityRecord): HistoryItem[] {
           at: opportunity.closed_at,
           title: opportunityStatusLabels[opportunity.status],
           kind: "milestone",
-          sourceLabel: "Cierre",
           tone: opportunity.status === "closed_won" ? "success" : "danger",
           details: opportunity.closed_lost_note ?? opportunity.closed_lost_reason ?? opportunity.disqualification_reason,
         }
@@ -731,7 +734,6 @@ function milestoneItems(opportunity: CRMOpportunityRecord): HistoryItem[] {
           at: opportunity.disqualified_at,
           title: "Descartada",
           kind: "milestone",
-          sourceLabel: "Pipeline",
           tone: "danger",
           details: opportunity.disqualification_reason,
         }
@@ -739,36 +741,4 @@ function milestoneItems(opportunity: CRMOpportunityRecord): HistoryItem[] {
   ]
 
   return items.filter((item): item is HistoryItem => Boolean(item))
-}
-
-export function OpportunityTraceReadOnly({ opportunity }: { opportunity: CRMOpportunityRecord }) {
-  return (
-    <FormSection
-      action={<Badge tone={opportunity.sharepoint_item_id ? "info" : "neutral"}>{opportunityOriginLabel(opportunity)}</Badge>}
-      className="border-l-4 border-l-primary/45"
-      title="Origen del registro"
-    >
-      <DetailFieldGrid>
-        <DetailField label="Lead id" value={opportunity.lead_id} />
-        <DetailField label="Estado legado" value={opportunity.legacy_status} />
-        <DetailField label="SharePoint site" value={opportunity.sharepoint_site_id} />
-        <DetailField label="SharePoint list" value={opportunity.sharepoint_list_id} />
-        <DetailField label="SharePoint item" value={opportunity.sharepoint_item_id} />
-        <DetailField label="SharePoint unique id" value={opportunity.sharepoint_unique_id} />
-        <DetailField label="SharePoint etag" value={opportunity.sharepoint_etag} />
-        <DetailField label="Importado" value={formatOpportunityDateTime(opportunity.imported_at)} />
-        <DetailField label="Creado" value={formatDateTime(opportunity.created_at)} />
-        <DetailField label="Actualizado" value={formatDateTime(opportunity.updated_at)} />
-      </DetailFieldGrid>
-      {opportunity.url ? (
-        <div className="mt-4">
-          <Button asChild variant="outline">
-            <a href={opportunity.url} target="_blank" rel="noreferrer">
-              Abrir URL original
-            </a>
-          </Button>
-        </div>
-      ) : null}
-    </FormSection>
-  )
 }

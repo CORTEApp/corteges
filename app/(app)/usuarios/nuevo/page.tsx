@@ -6,11 +6,13 @@ import { ResourceEditScreen } from "@/components/resource-screens"
 import { Button } from "@/components/ui/button"
 import { FormSection } from "@/components/ui/form-section"
 import { FormLoadingOverlay } from "@/components/ui/form-loading-overlay"
-import { FormSubmitButton } from "@/components/ui/form-submit-button"
+import { FormPendingScreen } from "@/components/ui/form-pending-screen"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { APP_ROLE_LABELS, APP_ROLES } from "@/lib/users/roles"
 import { requireMasterAccess } from "@/lib/users/server"
+
+const USER_CREATE_FORM_ID = "user-create-form"
 
 export default async function NuevoUsuarioPage() {
   await requireMasterAccess("/usuarios/nuevo")
@@ -23,12 +25,18 @@ export default async function NuevoUsuarioPage() {
         title: "Nuevo usuario",
         subtitle: "Alta directa en Supabase Auth con roles internos de CORTE.Ges.",
         actions: (
-          <Button asChild variant="outline">
-            <Link href="/usuarios">
-              <ArrowLeft aria-hidden="true" />
-              Volver
-            </Link>
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button asChild variant="outline">
+              <Link href="/usuarios">
+                <ArrowLeft aria-hidden="true" />
+                Volver
+              </Link>
+            </Button>
+            <Button type="submit" form={USER_CREATE_FORM_ID}>
+              <ShieldCheck className="size-4" aria-hidden="true" />
+              Crear usuario
+            </Button>
+          </div>
         ),
       }}
     >
@@ -36,7 +44,8 @@ export default async function NuevoUsuarioPage() {
         description="Crea el usuario confirmado y asigna al menos un rol operativo."
         title="Alta de usuario"
       >
-        <form action={createManagedUser} className="relative space-y-5">
+        <form id={USER_CREATE_FORM_ID} action={createManagedUser} className="relative space-y-5">
+          <FormPendingScreen label="Creando usuario..." />
           <FormLoadingOverlay label="Creando usuario..." />
 
           <div className="grid gap-4 md:grid-cols-2">
@@ -67,11 +76,6 @@ export default async function NuevoUsuarioPage() {
               ))}
             </div>
           </div>
-
-          <FormSubmitButton pendingLabel="Creando usuario...">
-            <ShieldCheck className="size-4" aria-hidden="true" />
-            Crear usuario
-          </FormSubmitButton>
         </form>
       </FormSection>
     </ResourceEditScreen>

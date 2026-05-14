@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { EmptyState } from "@/components/ui/empty-state"
 import { FormLoadingOverlay } from "@/components/ui/form-loading-overlay"
+import { FormPendingScreen } from "@/components/ui/form-pending-screen"
 import { FormSection } from "@/components/ui/form-section"
 import { FormSubmitButton } from "@/components/ui/form-submit-button"
 import { Input } from "@/components/ui/input"
@@ -48,6 +49,9 @@ const OUTBOX_MODE_LABELS: Record<MailOutboxMode, string> = {
 }
 
 const MODULES: MailModule[] = ["billing", "crm", "expense_invoice_intake"]
+const NEW_OUTBOX_FORM_ID = "mail-outbox-new-form"
+const MODULE_ASSIGNMENTS_FORM_ID = "mail-module-assignments-form"
+const FISCAL_TAX_SETTINGS_FORM_ID = "fiscal-tax-settings-form"
 
 function connectionLabel(connection: MicrosoftOutboxConnection) {
   const identity = connection.display_name || connection.microsoft_email || connection.user_id
@@ -82,9 +86,11 @@ function firstParam(value: string | string[] | undefined) {
 function OutboxForm({
   outbox,
   connections,
+  formId,
 }: {
   outbox?: MailOutbox
   connections: MicrosoftOutboxConnection[]
+  formId: string
 }) {
   const scope = outbox?.id ?? "nuevo"
   const connectionOptions = connections.map((connection) => ({
@@ -94,7 +100,8 @@ function OutboxForm({
   const disabled = connectionOptions.length === 0
 
   return (
-    <form action={saveMailOutboxAction} className="relative grid gap-4">
+    <form id={formId} action={saveMailOutboxAction} className="relative grid gap-4">
+      <FormPendingScreen label="Guardando buzon..." />
       <FormLoadingOverlay label="Guardando buzon..." />
       {outbox ? <input type="hidden" name="outbox_id" value={outbox.id} /> : null}
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
@@ -159,12 +166,6 @@ function OutboxForm({
           Activo
         </label>
       </div>
-      <div className="flex flex-wrap justify-end gap-2">
-        <FormSubmitButton disabled={disabled} pendingLabel="Guardando...">
-          <Save className="size-4" aria-hidden="true" />
-          {outbox ? "Guardar buzon" : "Crear buzon"}
-        </FormSubmitButton>
-      </div>
     </form>
   )
 }
@@ -185,8 +186,15 @@ function ModuleAssignments({
     <FormSection
       title="Uso por modulo"
       description="Define que buzon Microsoft usara cada modulo operativo. Teams sigue usando la cuenta delegada del usuario que crea la reunion."
+      action={
+        <Button type="submit" form={MODULE_ASSIGNMENTS_FORM_ID} disabled={!activeOptions.length}>
+          <Save className="size-4" aria-hidden="true" />
+          Guardar uso
+        </Button>
+      }
     >
-      <form action={saveModuleOutboxSettingsAction} className="relative grid gap-5">
+      <form id={MODULE_ASSIGNMENTS_FORM_ID} action={saveModuleOutboxSettingsAction} className="relative grid gap-5">
+        <FormPendingScreen label="Guardando modulos..." />
         <FormLoadingOverlay label="Guardando modulos..." />
         <div className="grid gap-4 lg:grid-cols-2">
           {MODULES.map((module) => (
@@ -208,12 +216,6 @@ function ModuleAssignments({
             Crea o reactiva un buzon antes de asignarlo a un modulo.
           </p>
         ) : null}
-        <div className="flex justify-end">
-          <FormSubmitButton disabled={!activeOptions.length} pendingLabel="Guardando...">
-            <Save className="size-4" aria-hidden="true" />
-            Guardar uso por modulo
-          </FormSubmitButton>
-        </div>
       </form>
     </FormSection>
   )
@@ -225,9 +227,20 @@ function FiscalTaxSettingsForm({ settings }: { settings: FiscalTaxSettings }) {
       id="fiscalidad"
       title="Fiscalidad"
       description="Perfil de tramos usado por Estadisticas > Facturacion para estimar IRPF."
-      action={<Badge tone={settings.source === "database" ? "success" : "warning"}>{settings.source === "database" ? "Guardado" : "Defecto"}</Badge>}
+      action={
+        <div className="flex flex-wrap justify-end gap-2">
+          <Badge tone={settings.source === "database" ? "success" : "warning"}>
+            {settings.source === "database" ? "Guardado" : "Defecto"}
+          </Badge>
+          <Button type="submit" form={FISCAL_TAX_SETTINGS_FORM_ID}>
+            <Save className="size-4" aria-hidden="true" />
+            Guardar fiscalidad
+          </Button>
+        </div>
+      }
     >
-      <form action={saveFiscalTaxSettingsAction} className="relative grid gap-5">
+      <form id={FISCAL_TAX_SETTINGS_FORM_ID} action={saveFiscalTaxSettingsAction} className="relative grid gap-5">
+        <FormPendingScreen label="Guardando fiscalidad..." />
         <FormLoadingOverlay label="Guardando fiscalidad..." />
         <div className="grid gap-4 lg:grid-cols-[8rem_minmax(0,1fr)]">
           <div className="space-y-2">
@@ -282,13 +295,6 @@ function FiscalTaxSettingsForm({ settings }: { settings: FiscalTaxSettings }) {
         <div className="space-y-2">
           <Label htmlFor="source_note">Nota interna</Label>
           <Input id="source_note" name="source_note" defaultValue={settings.sourceNote ?? ""} />
-        </div>
-
-        <div className="flex justify-end">
-          <FormSubmitButton pendingLabel="Guardando...">
-            <Save className="size-4" aria-hidden="true" />
-            Guardar fiscalidad
-          </FormSubmitButton>
         </div>
       </form>
     </FormSection>
@@ -404,15 +410,22 @@ export default async function SettingsPage({
                     <h3 className="text-sm font-semibold">Nuevo buzon</h3>
                     <p className="mt-1 text-sm text-muted-foreground">Usa un buzon propio o uno compartido autorizado en Microsoft 365.</p>
                   </div>
-                  <Badge tone="neutral">Alta</Badge>
+                  <div className="flex flex-wrap justify-end gap-2">
+                    <Badge tone="neutral">Alta</Badge>
+                    <Button type="submit" form={NEW_OUTBOX_FORM_ID} disabled={!microsoftConnections.length}>
+                      <Save className="size-4" aria-hidden="true" />
+                      Crear buzon
+                    </Button>
+                  </div>
                 </div>
-                <OutboxForm connections={microsoftConnections} />
+                <OutboxForm formId={NEW_OUTBOX_FORM_ID} connections={microsoftConnections} />
               </div>
 
               {outboxes.length ? (
                 <div className="divide-y divide-border/70 rounded-[var(--radius-panel)] border border-border/80 bg-[color:var(--surface-2)]">
                   {outboxes.map((outbox) => {
                     const connection = connectionsByUserId.get(outbox.connection_user_id)
+                    const outboxFormId = `mail-outbox-form-${outbox.id}`
                     return (
                       <section key={outbox.id} className="grid gap-4 p-4">
                         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
@@ -425,6 +438,10 @@ export default async function SettingsPage({
                             <p className="mt-1 break-all text-sm text-muted-foreground">{outbox.email_address}</p>
                           </div>
                           <div className="flex flex-wrap gap-2">
+                            <Button type="submit" form={outboxFormId} disabled={!microsoftConnections.length}>
+                              <Save className="size-4" aria-hidden="true" />
+                              Guardar buzon
+                            </Button>
                             {outbox.active ? (
                               <form action={testMailOutboxAction}>
                                 <input type="hidden" name="outbox_id" value={outbox.id} />
@@ -451,7 +468,7 @@ export default async function SettingsPage({
                           <DetailField label="Ultimo error" value={outbox.last_error || "Sin errores registrados"} />
                         </DetailFieldGrid>
 
-                        <OutboxForm outbox={outbox} connections={microsoftConnections} />
+                        <OutboxForm outbox={outbox} formId={outboxFormId} connections={microsoftConnections} />
                       </section>
                     )
                   })}

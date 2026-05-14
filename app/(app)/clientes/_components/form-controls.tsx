@@ -92,13 +92,14 @@ export function SelectField({
   )
 }
 
-export function SectionTitle({ title, note }: { title: string; note?: string }) {
+export function SectionTitle({ title, note, action }: { title: string; note?: string; action?: ReactNode }) {
   return (
     <div className="flex items-end justify-between gap-4 border-b border-border/70 pb-3">
       <div>
         <h2 className="text-base font-semibold tracking-tight text-foreground">{title}</h2>
         {note ? <p className="mt-1 text-sm leading-5 text-muted-foreground">{note}</p> : null}
       </div>
+      {action ? <div className="shrink-0">{action}</div> : null}
     </div>
   )
 }

@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { FileUp, Trash2 } from "lucide-react"
 
-import { Button } from "@/components/ui/button"
+import { FormSubmitButton } from "@/components/ui/form-submit-button"
 import { deleteClientDocumentAction, uploadClientDocumentAction } from "@/app/(app)/clientes/actions"
 import { formatDate, formatFileSize } from "@/lib/clients/format"
 import type { ClientDocument } from "@/lib/clients/types"
@@ -38,10 +38,10 @@ export function DocumentSection({
               className="rounded-[var(--radius-panel)] border border-input/85 bg-[color:var(--surface-1)] px-3 py-2 text-sm text-foreground"
             />
           </label>
-          <Button type="submit" className="self-end">
+          <FormSubmitButton className="self-end" pendingLabel="Subiendo documento...">
             <FileUp aria-hidden="true" />
             Subir
-          </Button>
+          </FormSubmitButton>
         </form>
       ) : null}
 
@@ -63,7 +63,7 @@ export function DocumentSection({
                     {document.file_name}
                   </Link>
                   <div className="mt-1 text-xs text-muted-foreground">
-                    {document.source_kind === "sharepoint" ? "Origen SharePoint" : "Subido a CORTE.Ges"}
+                    {document.source_kind === "sharepoint" ? "Archivo disponible" : "Subido a CORTE.Ges"}
                   </div>
                 </div>
                 <div className="text-sm text-muted-foreground">{formatFileSize(document.file_size)}</div>
@@ -72,10 +72,10 @@ export function DocumentSection({
                   <form action={deleteClientDocumentAction} className="justify-self-start md:justify-self-end">
                     <input type="hidden" name="client_id" value={clientId} />
                     <input type="hidden" name="document_id" value={document.id} />
-                    <Button type="submit" variant="ghost" size="sm">
+                    <FormSubmitButton pendingLabel="Borrando..." variant="ghost" size="sm">
                       <Trash2 aria-hidden="true" />
                       Borrar
-                    </Button>
+                    </FormSubmitButton>
                   </form>
                 ) : null}
               </div>

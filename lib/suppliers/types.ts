@@ -11,6 +11,7 @@ export type SupplierRecord = {
   contact_email: string | null
   start_date: string | null
   active: boolean
+  auto_approve_expense_invoices: boolean
   payment_method: SupplierPaymentMethod
   sepa_reference: string | null
   stripe_reference: string | null

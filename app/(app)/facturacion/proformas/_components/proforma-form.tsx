@@ -1,11 +1,12 @@
 "use client"
 
+import type { ReactNode } from "react"
 import { useMemo, useState } from "react"
-import Link from "next/link"
 import { FilePlus2, Plus, Trash2 } from "lucide-react"
 
 import { createProformaAction } from "@/app/(app)/facturacion/proformas/actions"
 import { Button } from "@/components/ui/button"
+import { FormPendingScreen } from "@/components/ui/form-pending-screen"
 import { FormSubmitButton } from "@/components/ui/form-submit-button"
 import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
@@ -29,12 +30,16 @@ export function ProformaForm({
   nextNumberPreview,
   today,
   defaultDueDate,
+  formId = "proforma-form",
+  actionsPlacement = "section",
 }: {
   clients: BillingClientOption[]
   facturables: BillingFacturableOption[]
   nextNumberPreview: string
   today: string
   defaultDueDate: string
+  formId?: string
+  actionsPlacement?: "page" | "section"
 }) {
   const firstFacturableId = facturables[0]?.id ?? ""
   const [rows, setRows] = useState<ProformaLineRow[]>([
@@ -61,6 +66,15 @@ export function ProformaForm({
     },
     { subtotal: 0, tax: 0, total: 0 },
   )
+  const pendingLabel = "Creando..."
+  const sectionAction = actionsPlacement === "section"
+    ? (
+        <FormSubmitButton fullscreenPending={false} pendingLabel={pendingLabel}>
+          <FilePlus2 aria-hidden="true" />
+          Crear proforma
+        </FormSubmitButton>
+      )
+    : null
 
   function addRow() {
     setRows((current) => [
@@ -83,13 +97,15 @@ export function ProformaForm({
   }
 
   return (
-    <form action={createProformaAction} className="grid gap-8">
+    <form id={formId} action={createProformaAction} className="grid gap-8">
+      <FormPendingScreen label={pendingLabel} />
       <input type="hidden" name="line_count" value={rows.length} />
 
       <section className={sectionClassName}>
         <SectionTitle
           title="Cabecera"
           note={`La siguiente proforma se reservara al guardar como ${nextNumberPreview}.`}
+          action={sectionAction}
         />
         <div className="mt-5 grid gap-4 md:grid-cols-6">
           <label className="grid gap-2 md:col-span-3">
@@ -223,15 +239,6 @@ export function ProformaForm({
         </div>
       </section>
 
-      <div className="flex items-center justify-between gap-3 rounded-[var(--radius-shell)] border border-border/80 bg-[color:var(--surface-1)] px-5 py-4 shadow-[0_18px_40px_-28px_rgba(15,23,42,0.24)]">
-        <Button asChild variant="outline">
-          <Link href="/facturacion/proformas">Volver</Link>
-        </Button>
-        <FormSubmitButton pendingLabel="Creando...">
-          <FilePlus2 aria-hidden="true" />
-          Crear proforma
-        </FormSubmitButton>
-      </div>
     </form>
   )
 }
@@ -247,10 +254,11 @@ function TotalPill({ label, value, strong }: { label: string; value: number; str
   )
 }
 
-function SectionTitle({ title, note }: { title: string; note?: string }) {
+function SectionTitle({ title, note, action }: { title: string; note?: string; action?: ReactNode }) {
   return (
-    <div className="border-b border-border/70 pb-3">
+    <div className="flex items-end justify-between gap-4 border-b border-border/70 pb-3">
       <SectionTitleBlock title={title} note={note} />
+      {action ? <div className="shrink-0">{action}</div> : null}
     </div>
   )
 }

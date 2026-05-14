@@ -1,9 +1,9 @@
-import Link from "next/link"
 import { Save } from "lucide-react"
 
 import { saveSupplierAction } from "@/app/(app)/proveedores/actions"
 import { Field, SectionTitle, SelectField, TextAreaField } from "@/app/(app)/clientes/_components/form-controls"
-import { Button } from "@/components/ui/button"
+import { FormPendingScreen } from "@/components/ui/form-pending-screen"
+import { FormSubmitButton } from "@/components/ui/form-submit-button"
 import { supplierPaymentMethodLabels } from "@/lib/suppliers/format"
 import type { SupplierPaymentMethod, SupplierRecord } from "@/lib/suppliers/types"
 
@@ -13,19 +13,33 @@ const sectionClassName =
 
 export function SupplierForm({
   supplier,
-  cancelHref = "/proveedores",
+  formId = "supplier-form",
+  actionsPlacement = "section",
 }: {
   supplier?: SupplierRecord
-  cancelHref?: string
+  formId?: string
+  actionsPlacement?: "page" | "section"
 }) {
+  const pendingLabel = "Guardando proveedor..."
+  const sectionAction = actionsPlacement === "section"
+    ? (
+        <FormSubmitButton fullscreenPending={false} pendingLabel={pendingLabel}>
+          <Save aria-hidden="true" />
+          Guardar proveedor
+        </FormSubmitButton>
+      )
+    : null
+
   return (
-    <form action={saveSupplierAction} className="grid gap-8">
+    <form id={formId} action={saveSupplierAction} className="grid gap-8">
+      <FormPendingScreen label={pendingLabel} />
       {supplier ? <input type="hidden" name="supplier_id" value={supplier.id} /> : null}
 
       <section className={sectionClassName}>
         <SectionTitle
           title="Identidad"
           note="El identificador fiscal, la denominación y si la relación sigue vigente."
+          action={sectionAction}
         />
         <div className="mt-5 grid gap-4 md:grid-cols-6">
           <Field
@@ -59,6 +73,20 @@ export function SupplierForm({
               className="size-4 rounded-[var(--radius-control)] border-input accent-primary"
             />
             <span className="text-sm font-semibold text-foreground">Proveedor activo</span>
+          </label>
+          <label className="flex h-full items-start gap-3 rounded-[var(--radius-panel)] border border-input/85 bg-[color:var(--surface-2)] px-4 py-3 md:col-span-2">
+            <input
+              type="checkbox"
+              name="auto_approve_expense_invoices"
+              defaultChecked={supplier?.auto_approve_expense_invoices ?? false}
+              className="mt-0.5 size-4 rounded-[var(--radius-control)] border-input accent-primary"
+            />
+            <span className="grid gap-1">
+              <span className="text-sm font-semibold text-foreground">Aprobación automática</span>
+              <span className="text-xs leading-5 text-muted-foreground">
+                Crea el gasto si la factura entra extraída, completa y sin duplicados.
+              </span>
+            </span>
           </label>
         </div>
       </section>
@@ -105,15 +133,6 @@ export function SupplierForm({
         </div>
       </section>
 
-      <div className="flex items-center justify-between gap-3 rounded-[var(--radius-shell)] border border-border/80 bg-[color:var(--surface-1)] px-5 py-4 shadow-[0_18px_40px_-28px_rgba(15,23,42,0.24)]">
-        <Button asChild variant="outline">
-          <Link href={cancelHref}>Volver</Link>
-        </Button>
-        <Button type="submit">
-          <Save aria-hidden="true" />
-          Guardar proveedor
-        </Button>
-      </div>
     </form>
   )
 }

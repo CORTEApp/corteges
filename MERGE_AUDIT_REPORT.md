@@ -7,7 +7,7 @@
 - bloques en catálogo: `19`
 - items en registry: `2`
 - contrato visual: `checked`
-- ficheros runtime visual revisados: `146`
+- ficheros runtime visual revisados: `154`
 
 ## Rutas detectadas
 - /: app\page.tsx

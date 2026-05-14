@@ -1,11 +1,11 @@
 "use client"
 
+import type { ReactNode } from "react"
 import { useMemo, useState } from "react"
-import Link from "next/link"
 import { Save } from "lucide-react"
 
 import { saveSubscriptionAction } from "@/app/(app)/facturacion/suscripciones/actions"
-import { Button } from "@/components/ui/button"
+import { FormPendingScreen } from "@/components/ui/form-pending-screen"
 import { FormSubmitButton } from "@/components/ui/form-submit-button"
 import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
@@ -36,12 +36,14 @@ export function SubscriptionForm({
   subscription,
   clients,
   facturables,
-  cancelHref = "/facturacion/suscripciones",
+  formId = "subscription-form",
+  actionsPlacement = "section",
 }: {
   subscription?: BillingSubscription
   clients: BillingClientOption[]
   facturables: BillingFacturableOption[]
-  cancelHref?: string
+  formId?: string
+  actionsPlacement?: "page" | "section"
 }) {
   const initialClient = clients.find((client) => client.id === subscription?.client_id) ?? clients[0]
   const initialFacturable = facturables.find((facturable) => facturable.id === subscription?.facturable_id) ?? facturables[0]
@@ -65,15 +67,26 @@ export function SubscriptionForm({
   const selectedFacturable = facturableById.get(facturableId)
   const calculatedTotal = roundTotal(toNumber(selectedFacturable?.unit_price) * toNumber(quantity))
   const taxPreview = applyVat ? roundTotal(toNumber(total) * (toNumber(vatRate) / 100)) : 0
+  const pendingLabel = "Guardando..."
+  const sectionAction = actionsPlacement === "section"
+    ? (
+        <FormSubmitButton fullscreenPending={false} pendingLabel={pendingLabel}>
+          <Save aria-hidden="true" />
+          Guardar suscripcion
+        </FormSubmitButton>
+      )
+    : null
 
   return (
-    <form action={saveSubscriptionAction} className="grid gap-8">
+    <form id={formId} action={saveSubscriptionAction} className="grid gap-8">
+      <FormPendingScreen label={pendingLabel} />
       {subscription ? <input type="hidden" name="subscription_id" value={subscription.id} /> : null}
 
       <section className={sectionClassName}>
         <SectionTitle
           title="Cliente y concepto"
           note="La suscripcion guarda snapshot de cliente, correo y concepto para conservar el historico comercial."
+          action={sectionAction}
         />
         <div className="mt-5 grid gap-4 md:grid-cols-6">
           <label className="grid gap-2 md:col-span-3">
@@ -237,15 +250,6 @@ export function SubscriptionForm({
         </div>
       </section>
 
-      <div className="flex items-center justify-between gap-3 rounded-[var(--radius-shell)] border border-border/80 bg-[color:var(--surface-1)] px-5 py-4 shadow-[0_18px_40px_-28px_rgba(15,23,42,0.24)]">
-        <Button asChild variant="outline">
-          <Link href={cancelHref}>Volver</Link>
-        </Button>
-        <FormSubmitButton pendingLabel="Guardando...">
-          <Save aria-hidden="true" />
-          Guardar suscripcion
-        </FormSubmitButton>
-      </div>
     </form>
   )
 }
@@ -261,11 +265,14 @@ function TotalPill({ label, value, strong }: { label: string; value: number; str
   )
 }
 
-function SectionTitle({ title, note }: { title: string; note?: string }) {
+function SectionTitle({ title, note, action }: { title: string; note?: string; action?: ReactNode }) {
   return (
-    <div className="border-b border-border/70 pb-3">
-      <h2 className="text-base font-semibold tracking-tight text-foreground">{title}</h2>
-      {note ? <p className="mt-1 text-sm leading-5 text-muted-foreground">{note}</p> : null}
+    <div className="flex items-end justify-between gap-4 border-b border-border/70 pb-3">
+      <div>
+        <h2 className="text-base font-semibold tracking-tight text-foreground">{title}</h2>
+        {note ? <p className="mt-1 text-sm leading-5 text-muted-foreground">{note}</p> : null}
+      </div>
+      {action ? <div className="shrink-0">{action}</div> : null}
     </div>
   )
 }

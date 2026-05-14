@@ -1,7 +1,7 @@
-import Link from "next/link"
 import { Save } from "lucide-react"
 
-import { Button } from "@/components/ui/button"
+import { FormPendingScreen } from "@/components/ui/form-pending-screen"
+import { FormSubmitButton } from "@/components/ui/form-submit-button"
 import { saveClientAction } from "@/app/(app)/clientes/actions"
 import { paymentMethodLabels } from "@/lib/clients/format"
 import type { ClientRecord, PaymentMethod } from "@/lib/clients/types"
@@ -14,19 +14,33 @@ const sectionClassName =
 
 export function ClientForm({
   client,
-  cancelHref = "/clientes",
+  formId = "client-form",
+  actionsPlacement = "section",
 }: {
   client?: ClientRecord
-  cancelHref?: string
+  formId?: string
+  actionsPlacement?: "page" | "section"
 }) {
+  const pendingLabel = "Guardando cliente..."
+  const sectionAction = actionsPlacement === "section"
+    ? (
+        <FormSubmitButton fullscreenPending={false} pendingLabel={pendingLabel}>
+          <Save aria-hidden="true" />
+          Guardar cliente
+        </FormSubmitButton>
+      )
+    : null
+
   return (
-    <form action={saveClientAction} className="grid gap-8">
+    <form id={formId} action={saveClientAction} className="grid gap-8">
+      <FormPendingScreen label={pendingLabel} />
       {client ? <input type="hidden" name="client_id" value={client.id} /> : null}
 
       <section className={sectionClassName}>
         <SectionTitle
           title="Identidad"
           note="Lo mínimo que evita dudas: quién es, cómo se reconoce y si sigue operativo."
+          action={sectionAction}
         />
         <div className="mt-5 grid gap-4 md:grid-cols-6">
           <Field
@@ -123,15 +137,6 @@ export function ClientForm({
         </div>
       </section>
 
-      <div className="flex items-center justify-between gap-3 rounded-[var(--radius-shell)] border border-border/80 bg-[color:var(--surface-1)] px-5 py-4 shadow-[0_18px_40px_-28px_rgba(15,23,42,0.24)]">
-        <Button asChild variant="outline">
-          <Link href={cancelHref}>Volver</Link>
-        </Button>
-        <Button type="submit">
-          <Save aria-hidden="true" />
-          Guardar cliente
-        </Button>
-      </div>
     </form>
   )
 }

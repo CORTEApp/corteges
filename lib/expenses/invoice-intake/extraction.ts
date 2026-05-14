@@ -7,6 +7,9 @@ import type {
   SupplierTemplateFieldRule,
   SupplierTemplateRules,
 } from "@/lib/expenses/invoice-intake/types"
+import { amountMatchesTotal, calculateInvoiceTotal, roundMoney } from "@/lib/expenses/invoice-intake/amounts"
+
+export { amountMatchesTotal, roundMoney }
 
 type InvoiceField =
   | "supplier_tax_id"
@@ -31,9 +34,61 @@ type ReviewedInvoiceValues = {
   title: string
 }
 
+type ExtractMatch<T> = {
+  value: T
+  source: string
+}
+
+type SupplierMatch = {
+  supplier: ExpenseSupplierOption
+  taxId: string
+  source: string
+}
+
+const EXTRACTOR_VERSION = "deterministic_pdf_text_v2"
 const TAX_ID_PATTERN = /\b(?:ES\s*)?[A-Z]\s*[-.]?\s*\d\s*[-.]?\s*\d\s*[-.]?\s*\d\s*[-.]?\s*\d\s*[-.]?\s*\d\s*[-.]?\s*\d\s*[-.]?\s*\d\s*[-.]?\s*[A-Z0-9]\b|\b(?:ES\s*)?\d\s*[-.]?\s*\d\s*[-.]?\s*\d\s*[-.]?\s*\d\s*[-.]?\s*\d\s*[-.]?\s*\d\s*[-.]?\s*\d\s*[-.]?\s*\d\s*[-.]?\s*[A-Z]\b/gi
+const EU_VAT_PATTERN = /\bEU\s*(?:OSS\s*)?VAT\s*(EU\s*\d{6,})\b|\b(EU\s*\d{6,})\b/gi
 const DATE_PATTERN = /\b(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})\b|\b(\d{4})-(\d{2})-(\d{2})\b/g
-const MONEY_PATTERN = /-?\d{1,3}(?:[.\s]\d{3})*(?:,\d{1,4})?|-?\d+(?:[.,]\d{1,4})?/g
+const MONEY_PATTERN = /-?(?:\d{1,3}(?:[.\s]\d{3})+(?:,\d{1,4})?|\d+(?:[.,]\d{1,4})?)/g
+const EMAIL_PATTERN = /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi
+const MONTHS: Record<string, string> = {
+  january: "01",
+  jan: "01",
+  enero: "01",
+  february: "02",
+  feb: "02",
+  febrero: "02",
+  march: "03",
+  mar: "03",
+  marzo: "03",
+  april: "04",
+  apr: "04",
+  abril: "04",
+  may: "05",
+  mayo: "05",
+  june: "06",
+  jun: "06",
+  junio: "06",
+  july: "07",
+  jul: "07",
+  julio: "07",
+  august: "08",
+  aug: "08",
+  agosto: "08",
+  september: "09",
+  sep: "09",
+  sept: "09",
+  septiembre: "09",
+  october: "10",
+  oct: "10",
+  octubre: "10",
+  november: "11",
+  nov: "11",
+  noviembre: "11",
+  december: "12",
+  dec: "12",
+  diciembre: "12",
+}
 
 export async function extractPdfText(buffer: Buffer) {
   const parsed = await pdfParse(buffer)
@@ -54,24 +109,47 @@ export function inferInvoiceDraft(input: {
   suppliers: ExpenseSupplierOption[]
   templates: ExpenseInvoiceSupplierTemplate[]
 }): ExtractedInvoiceDraft {
-  const lines = splitLines(input.text)
+  const normalizedText = normalizeExtractedText(input.text)
+  const lines = splitLines(normalizedText)
   const field_confidence: Record<string, number> = {}
+  const fieldSources: Record<string, string> = {}
   const extraction_data: Record<string, unknown> = {
-    extractor: "deterministic_pdf_text_v1",
-    text_length: input.text.length,
+    extractor: EXTRACTOR_VERSION,
+    text_length: normalizedText.length,
   }
 
-  const supplier = findSupplier(input.text, input.suppliers)
+  const supplierMatch = findSupplier(normalizedText, lines, input.suppliers)
+  const invoiceNumber = extractInvoiceNumber(lines)
+  const invoiceDate = extractInvoiceDate(lines)
+  const netAmount = extractMoneyByLabels(lines, ["total excluding tax", "base imponible", "subtotal", "importe neto", "base"])
+  const vatRate = extractVatRate(lines)
+  const totalAmount = extractMoneyByLabels(
+    lines,
+    ["amount due", "total factura", "total a pagar", "importe total", "total"],
+    ["total excluding tax"],
+  )
+
+  if (supplierMatch) {
+    fieldSources.supplier_id = supplierMatch.source
+    fieldSources.supplier_tax_id = supplierMatch.source
+    fieldSources.supplier_name = supplierMatch.source
+  }
+  addFieldSource(fieldSources, "invoice_number", invoiceNumber)
+  addFieldSource(fieldSources, "invoice_date", invoiceDate)
+  addFieldSource(fieldSources, "net_amount", netAmount)
+  addFieldSource(fieldSources, "vat_rate", vatRate)
+  addFieldSource(fieldSources, "total_amount", totalAmount)
+
   let draft: ExtractedInvoiceDraft = {
-    supplier_id: supplier?.id ?? null,
-    supplier_tax_id: supplier?.tax_id ?? firstTaxId(input.text),
-    supplier_name: supplier?.name ?? null,
-    invoice_number: extractInvoiceNumber(lines),
-    invoice_date: extractInvoiceDate(lines),
-    net_amount: extractMoneyByLabels(lines, ["base imponible", "subtotal", "importe neto", "base"]),
-    vat_rate: extractVatRate(lines),
-    total_amount: extractMoneyByLabels(lines, ["total factura", "total a pagar", "importe total", "total"]),
-    currency: detectCurrency(input.text),
+    supplier_id: supplierMatch?.supplier.id ?? null,
+    supplier_tax_id: supplierMatch?.supplier.tax_id ?? firstTaxId(normalizedText)?.value ?? null,
+    supplier_name: supplierMatch?.supplier.name ?? null,
+    invoice_number: invoiceNumber?.value ?? null,
+    invoice_date: invoiceDate?.value ?? null,
+    net_amount: netAmount?.value ?? null,
+    vat_rate: vatRate?.value ?? null,
+    total_amount: totalAmount?.value ?? null,
+    currency: detectCurrency(normalizedText),
     extraction_data,
     field_confidence,
     status: "requiere_revision",
@@ -112,7 +190,7 @@ export function inferInvoiceDraft(input: {
   }
 
   if (draft.net_amount != null && draft.vat_rate != null && draft.total_amount == null) {
-    draft.total_amount = roundMoney(draft.net_amount * (1 + draft.vat_rate / 100))
+    draft.total_amount = calculateInvoiceTotal(draft.net_amount, draft.vat_rate)
     field_confidence.total_amount = 0.55
   }
 
@@ -135,6 +213,7 @@ export function inferInvoiceDraft(input: {
 
   draft.extraction_data = {
     ...draft.extraction_data,
+    field_sources: fieldSources,
     missing_fields: missing,
     amount_check: totalOk,
   }
@@ -163,6 +242,9 @@ export function normalizeTaxId(value: string | null | undefined) {
   const normalized = String(value ?? "")
     .toUpperCase()
     .replace(/[^A-Z0-9]/g, "")
+    .replace(/^EUOSSVATEU/, "EU")
+    .replace(/^EUOSSVAT/, "EU")
+    .replace(/^EUROPEANUNIONVAT/, "EU")
 
   if (normalized.startsWith("ES") && normalized.length > 9) {
     return normalized.slice(2)
@@ -186,10 +268,12 @@ export function parseMoney(value: string | number | null | undefined) {
 
   const lastComma = raw.lastIndexOf(",")
   const lastDot = raw.lastIndexOf(".")
-  const decimalSeparator = lastComma > lastDot ? "," : lastDot > -1 ? "." : ""
+  const decimalSeparator = decimalSeparatorForMoney(raw, lastComma, lastDot)
   const withoutThousands = decimalSeparator === ","
     ? raw.replace(/\./g, "").replace(",", ".")
-    : raw.replace(/,/g, "")
+    : decimalSeparator === "."
+      ? raw.replace(/,/g, "")
+      : raw.replace(/[.,\s]/g, "")
   const parsed = Number.parseFloat(withoutThousands)
   return Number.isFinite(parsed) ? roundMoney(parsed) : null
 }
@@ -207,6 +291,20 @@ export function parseDateToIso(value: string | null | undefined) {
 
   const european = raw.match(/\b(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})\b/)
   if (!european) {
+    const englishTextual = raw.match(
+      /(january|jan|february|feb|march|mar|april|apr|may|june|jun|july|jul|august|aug|september|sept|sep|october|oct|november|nov|december|dec)\s+(\d{1,2})(?:st|nd|rd|th)?[,]?\s+(\d{4})\b/i,
+    )
+    if (englishTextual) {
+      return validIsoDate(englishTextual[3], MONTHS[englishTextual[1].toLowerCase()], englishTextual[2])
+    }
+
+    const spanishTextual = raw.match(
+      /\b(\d{1,2})\s*(?:de\s*)?(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)\s*(?:de\s*)?(\d{4})\b/i,
+    )
+    if (spanishTextual) {
+      return validIsoDate(spanishTextual[3], MONTHS[spanishTextual[2].toLowerCase()], spanishTextual[1])
+    }
+
     return null
   }
 
@@ -214,20 +312,16 @@ export function parseDateToIso(value: string | null | undefined) {
   return validIsoDate(year, european[2], european[1])
 }
 
-export function roundMoney(value: number) {
-  return Math.round((value + Number.EPSILON) * 100) / 100
-}
-
-export function amountMatchesTotal(netAmount: number, vatRate: number, totalAmount: number) {
-  return Math.abs(roundMoney(netAmount * (1 + vatRate / 100)) - roundMoney(totalAmount)) <= 0.03
-}
-
 function normalizeExtractedText(value: string) {
   return value
-    .replace(/\u0000/g, "")
+    .replace(/([A-Z0-9])\u0000([A-Z0-9])/gi, "$1-$2")
+    .replace(/\u0000/g, " ")
     .replace(/\r\n/g, "\n")
     .replace(/[ \t]+\n/g, "\n")
     .replace(/\n{4,}/g, "\n\n")
+    .replace(/(\d+[.,]\d{2})(\d{1,2}(?:[.,]\d{1,2})?%)/g, "$1 $2")
+    .replace(/(\d)([€$£])/g, "$1 $2")
+    .replace(/([€$£])(?=\d)/g, "$1 ")
     .trim()
 }
 
@@ -238,17 +332,48 @@ function splitLines(text: string) {
     .filter(Boolean)
 }
 
-function findSupplier(text: string, suppliers: ExpenseSupplierOption[]) {
-  const taxIds = new Set((text.match(TAX_ID_PATTERN) ?? []).map(normalizeTaxId).filter(Boolean))
-  return suppliers.find((supplier) => taxIds.has(normalizeTaxId(supplier.tax_id)))
+function findSupplier(text: string, lines: string[], suppliers: ExpenseSupplierOption[]): SupplierMatch | null {
+  const taxIds = extractTaxIds(text)
+  for (const taxId of taxIds) {
+    const supplier = suppliers.find((candidate) => normalizeTaxId(candidate.tax_id) === taxId)
+    if (supplier) {
+      return { supplier, taxId, source: `tax_id:${taxId}` }
+    }
+  }
+
+  const emails = new Set((text.match(EMAIL_PATTERN) ?? []).map((email) => email.toLowerCase()))
+  const byEmail = suppliers.find((supplier) => supplier.contact_email && emails.has(supplier.contact_email.toLowerCase()))
+  if (byEmail) {
+    return {
+      supplier: byEmail,
+      taxId: normalizeTaxId(byEmail.tax_id),
+      source: `email:${byEmail.contact_email}`,
+    }
+  }
+
+  const normalizedText = normalizeSearchText(text)
+  const byExactName = suppliers.find((supplier) => {
+    const normalizedName = normalizeSearchText(supplier.name)
+    return normalizedName.length >= 5 && normalizedText.includes(normalizedName)
+  })
+
+  if (byExactName) {
+    return {
+      supplier: byExactName,
+      taxId: normalizeTaxId(byExactName.tax_id),
+      source: `name:${lineContaining(lines, byExactName.name) ?? byExactName.name}`,
+    }
+  }
+
+  return null
 }
 
 function firstTaxId(text: string) {
-  const match = text.match(TAX_ID_PATTERN)?.[0]
-  return match ? normalizeTaxId(match) : null
+  const value = extractTaxIds(text)[0]
+  return value ? { value, source: `tax_id:${value}` } : null
 }
 
-function extractInvoiceNumber(lines: string[]) {
+function extractInvoiceNumber(lines: string[]): ExtractMatch<string> | null {
   const patterns = [
     /(?:n[ouú]m(?:ero)?\.?\s*)?(?:de\s*)?factura\s*(?:n[ºo.]|num(?:ero)?|#)?\s*[:#-]?\s*([A-Z0-9][A-Z0-9./_-]{2,})/i,
     /(?:invoice|bill)\s*(?:no\.?|number|#)?\s*[:#-]?\s*([A-Z0-9][A-Z0-9./_-]{2,})/i,
@@ -260,7 +385,7 @@ function extractInvoiceNumber(lines: string[]) {
       const match = line.match(pattern)
       const value = cleanIdentifier(match?.[1])
       if (value && !/fecha|date|total|iva/i.test(value)) {
-        return value
+        return { value, source: line }
       }
     }
   }
@@ -268,45 +393,51 @@ function extractInvoiceNumber(lines: string[]) {
   return null
 }
 
-function extractInvoiceDate(lines: string[]) {
-  const preferred = lines.find((line) => /fecha|date|emisi[oó]n|expedici[oó]n/i.test(line))
-  const candidates = preferred ? [preferred, ...lines] : lines
+function extractInvoiceDate(lines: string[]): ExtractMatch<string> | null {
+  const preferred = lines.filter((line) => /date of issue|invoice date|fecha.*factura|fecha.*emisi[oó]n|emisi[oó]n|expedici[oó]n/i.test(line))
+  const fallback = lines.filter((line) => !preferred.includes(line))
+  const candidates = [...preferred, ...fallback]
 
   for (const line of candidates.slice(0, 80)) {
     const match = [...line.matchAll(DATE_PATTERN)][0]?.[0]
-    const parsed = parseDateToIso(match)
+    const parsed = parseDateToIso(match ?? line)
     if (parsed) {
-      return parsed
+      return { value: parsed, source: line }
     }
   }
 
   return null
 }
 
-function extractVatRate(lines: string[]) {
+function extractVatRate(lines: string[]): ExtractMatch<number> | null {
   const candidates = lines.filter((line) => /iva|vat|i\.v\.a/i.test(line))
   for (const line of candidates) {
     const match = line.match(/(\d{1,2}(?:[.,]\d{1,2})?)\s*%/)
     const parsed = parseMoney(match?.[1])
     if (parsed != null && parsed >= 0 && parsed <= 100) {
-      return parsed
+      return { value: parsed, source: line }
     }
   }
 
   return null
 }
 
-function extractMoneyByLabels(lines: string[], labels: string[]) {
+function extractMoneyByLabels(lines: string[], labels: string[], excludedLabels: string[] = []): ExtractMatch<number> | null {
   const normalizedLabels = labels.map((label) => label.toLowerCase())
+  const normalizedExcludedLabels = excludedLabels.map((label) => label.toLowerCase())
   const candidates = [...lines]
     .reverse()
-    .filter((line) => normalizedLabels.some((label) => line.toLowerCase().includes(label)))
+    .filter((line) => {
+      const normalizedLine = line.toLowerCase()
+      return normalizedLabels.some((label) => normalizedLine.includes(label)) &&
+        !normalizedExcludedLabels.some((label) => normalizedLine.includes(label))
+    })
 
   for (const line of candidates) {
     const values = moneyValues(line)
     const last = values.at(-1)
     if (last != null) {
-      return last
+      return { value: last, source: line }
     }
   }
 
@@ -317,6 +448,61 @@ function moneyValues(line: string) {
   return [...line.matchAll(MONEY_PATTERN)]
     .map((match) => parseMoney(match[0]))
     .filter((value): value is number => value != null)
+}
+
+function extractTaxIds(text: string) {
+  const taxIds = new Set<string>()
+  for (const match of text.matchAll(EU_VAT_PATTERN)) {
+    const value = normalizeTaxId(match[1] ?? match[2] ?? match[0])
+    if (value) taxIds.add(value)
+  }
+
+  for (const match of text.matchAll(TAX_ID_PATTERN)) {
+    const value = normalizeTaxId(match[0])
+    if (value) taxIds.add(value)
+  }
+
+  return [...taxIds]
+}
+
+function decimalSeparatorForMoney(raw: string, lastComma: number, lastDot: number) {
+  if (lastComma > -1 && lastDot > -1) {
+    return lastComma > lastDot ? "," : "."
+  }
+
+  const separator = lastComma > -1 ? "," : lastDot > -1 ? "." : ""
+  if (!separator) {
+    return ""
+  }
+
+  const parts = raw.split(separator)
+  const fraction = parts.at(-1) ?? ""
+  if (parts.length > 2) {
+    return ""
+  }
+
+  return fraction.length === 3 && raw.replace(/^-/, "").split(separator)[0].length <= 3 ? "" : separator
+}
+
+function addFieldSource(target: Record<string, string>, field: string, match: ExtractMatch<unknown> | null) {
+  if (match) {
+    target[field] = match.source
+  }
+}
+
+function normalizeSearchText(value: string) {
+  return value
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+}
+
+function lineContaining(lines: string[], value: string) {
+  const needle = normalizeSearchText(value)
+  return lines.find((line) => normalizeSearchText(line).includes(needle)) ?? null
 }
 
 function detectCurrency(text: string) {

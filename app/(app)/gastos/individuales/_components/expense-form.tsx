@@ -1,12 +1,11 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import Link from "next/link"
 import { Save } from "lucide-react"
 
 import { saveExpenseIndividualAction } from "@/app/(app)/gastos/individuales/actions"
 import { SectionTitle } from "@/app/(app)/clientes/_components/form-controls"
-import { Button } from "@/components/ui/button"
+import { FormPendingScreen } from "@/components/ui/form-pending-screen"
 import { FormSubmitButton } from "@/components/ui/form-submit-button"
 import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
@@ -42,11 +41,13 @@ function roundMoney(value: number) {
 export function ExpenseIndividualForm({
   expense,
   suppliers,
-  cancelHref = "/gastos/individuales",
+  formId = "expense-individual-form",
+  actionsPlacement = "section",
 }: {
   expense?: ExpenseIndividualRecord
   suppliers: ExpenseSupplierOption[]
-  cancelHref?: string
+  formId?: string
+  actionsPlacement?: "page" | "section"
 }) {
   const initialSupplier = suppliers.find((supplier) => supplier.id === expense?.supplier_id) ?? suppliers[0]
   const [supplierId, setSupplierId] = useState(expense?.supplier_id ?? initialSupplier?.id ?? "")
@@ -55,15 +56,26 @@ export function ExpenseIndividualForm({
   const supplierById = useMemo(() => new Map(suppliers.map((supplier) => [supplier.id, supplier])), [suppliers])
   const selectedSupplier = supplierById.get(supplierId)
   const calculatedTotal = roundMoney(toExpenseNumber(netAmount) * (1 + toExpenseNumber(vatRate) / 100))
+  const pendingLabel = "Guardando..."
+  const sectionAction = actionsPlacement === "section"
+    ? (
+        <FormSubmitButton fullscreenPending={false} pendingLabel={pendingLabel}>
+          <Save aria-hidden="true" />
+          Guardar gasto
+        </FormSubmitButton>
+      )
+    : null
 
   return (
-    <form action={saveExpenseIndividualAction} className="grid gap-8">
+    <form id={formId} action={saveExpenseIndividualAction} className="grid gap-8">
+      <FormPendingScreen label={pendingLabel} />
       {expense ? <input type="hidden" name="expense_id" value={expense.id} /> : null}
 
       <section className={sectionClassName}>
         <SectionTitle
           title="Proveedor"
           note="Cada gasto individual queda vinculado a un proveedor del maestro y guarda snapshot fiscal."
+          action={sectionAction}
         />
         <div className="mt-5 grid gap-4 md:grid-cols-6">
           <label className="grid gap-2 md:col-span-4">
@@ -160,7 +172,7 @@ export function ExpenseIndividualForm({
       </section>
 
       <section className={sectionClassName}>
-        <SectionTitle title="Observaciones" note="Notas internas o aclaraciones heredadas de SharePoint." />
+        <SectionTitle title="Observaciones" note="Notas internas o aclaraciones de la factura." />
         <div className="mt-5">
           <label className="grid gap-2">
             <span className="text-sm font-medium text-foreground">Observaciones</span>
@@ -174,15 +186,6 @@ export function ExpenseIndividualForm({
         </div>
       </section>
 
-      <div className="flex items-center justify-between gap-3 rounded-[var(--radius-shell)] border border-border/80 bg-[color:var(--surface-1)] px-5 py-4 shadow-[0_18px_40px_-28px_rgba(15,23,42,0.24)]">
-        <Button asChild variant="outline">
-          <Link href={cancelHref}>Volver</Link>
-        </Button>
-        <FormSubmitButton pendingLabel="Guardando...">
-          <Save aria-hidden="true" />
-          Guardar gasto
-        </FormSubmitButton>
-      </div>
     </form>
   )
 }

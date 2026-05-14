@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation"
 
+import { createAdminClient } from "@/lib/supabase/admin"
 import { createClient } from "@/lib/supabase/server"
 import { requireAdminAccess } from "@/lib/users/server"
 import type {
@@ -14,6 +15,11 @@ import type {
 import type { ExpenseSupplierOption } from "@/lib/expenses/types"
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>
+type UserProfileRow = {
+  id: string
+  display_name: string | null
+  email: string | null
+}
 
 export async function requireExpenseInvoiceIntakeAdmin(
   supabase?: SupabaseServerClient,
@@ -83,6 +89,41 @@ function composeListItems(
       primary_document: itemDocuments[0] ?? null,
     }
   })
+}
+
+async function attachEventActorProfiles(events: ExpenseInvoiceIntakeEvent[]) {
+  const actorIds = Array.from(
+    new Set(events.map((event) => event.actor_user_id).filter((id): id is string => Boolean(id))),
+  )
+
+  if (actorIds.length === 0) {
+    return events.map((event) => ({ ...event, actor_profile: null }))
+  }
+
+  const admin = createAdminClient()
+  const { data, error } = await admin
+    .from("user_profiles")
+    .select("id, display_name, email")
+    .in("id", actorIds)
+
+  if (error) {
+    throw error
+  }
+
+  const profileById = new Map(
+    ((data ?? []) as UserProfileRow[]).map((profile) => [
+      profile.id,
+      {
+        display_name: profile.display_name,
+        email: profile.email,
+      },
+    ]),
+  )
+
+  return events.map((event) => ({
+    ...event,
+    actor_profile: event.actor_user_id ? profileById.get(event.actor_user_id) ?? null : null,
+  }))
 }
 
 export async function listExpenseInvoiceIntake(filters: ExpenseInvoiceIntakeFilters): Promise<{
@@ -181,12 +222,14 @@ export async function getExpenseInvoiceIntakeDetail(itemId: string): Promise<Exp
     return null
   }
 
+  const events = await attachEventActorProfiles((eventData ?? []) as ExpenseInvoiceIntakeEvent[])
+
   return {
     user: user.user,
     item: itemData as ExpenseInvoiceIntakeItem,
     documents: (documentData ?? []) as ExpenseInvoiceIntakeDocument[],
     suppliers: (supplierData ?? []) as ExpenseSupplierOption[],
-    events: (eventData ?? []) as ExpenseInvoiceIntakeEvent[],
+    events,
   }
 }
 
@@ -199,4 +242,3 @@ export async function requireExpenseInvoiceIntakeDetail(itemId: string) {
 
   return detail
 }
-

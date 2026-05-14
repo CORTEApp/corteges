@@ -113,3 +113,21 @@
 7. Los ingresos fiscales salen de `billing_documents` con `document_type='invoice'`, excluyendo facturas `cancelled` y `discarded`.
 8. Los gastos fiscales salen de `expense_individuals`; si falta base se deriva desde total y tipo IVA para mantener el export operativo.
 9. Los tramos IRPF viven en `fiscal_tax_settings`, son editables desde `/settings#fiscalidad` y se tratan como estimacion interna configurable.
+10. `Gastos > Individuales` impide duplicados por `supplier_id + upper(btrim(invoice_number))`; no se normalizan guiones, barras ni espacios internos para evitar falsos positivos fiscales.
+11. Los duplicados historicos de gastos se archivan en `expense_individual_duplicate_archive` antes de eliminarse; la fila canonica se elige por importacion mas antigua, creacion mas antigua e `id` menor.
+12. El importador SharePoint de gastos deduplica la tanda antes del `upsert` con la misma clave proveedor + factura normalizada, para que una reimportacion no recree los duplicados historicos.
+13. `Gastos > Recepcion` abre por defecto en `requiere_revision`; `status=all` u otros filtros explicitos siguen respetandose.
+14. La recepcion de facturas omite PDFs ya importados por hash y marca como `requiere_revision` los posibles duplicados fiscales por proveedor + factura normalizada, recomendando revision exhaustiva antes de aprobar.
+15. El reconocimiento de recepcion de facturas sigue siendo determinista: se amplia a VAT OSS europeo, facturas Stripe/internacionales, fechas textuales e importes con punto decimal, sin IA ni OCR en esta entrega.
+16. La aprobación automática de gastos se activa por proveedor con `auto_approve_expense_invoices`; por defecto todos quedan en `false` y solo aprueba recepciones extraídas, completas, con proveedor activo y sin duplicados.
+17. Al pasar un proveedor de aprobación automática desactivada a activada, las recepciones `extraida` ya existentes no se aprueban sin una confirmación explícita en modal; cancelar o cerrar mantiene el flag activo sin procesar histórico.
+
+## 2026-05-14
+
+1. Las cargas no instantaneas usan `FullScreenLoading` con estetica Atlas sobria, marca CORTE.Ges, overlay full-viewport y retardo default de 300 ms.
+2. `FormSubmitButton` y `ConfirmSubmitButton` muestran el loader full-screen por defecto durante Server Actions; filtros GET, tabs, menus, enlaces externos y descargas quedan fuera.
+3. Las rutas principales (`app`, `auth`, `marketing`, `print`) declaran `loading.tsx` con el mismo componente para mantener feedback consistente en navegacion lenta.
+4. Los formularios persistentes no usan botonera inferior: `Guardar`, `Crear`, `Actualizar` y `Volver` viven en `PageHeader` cuando hay un unico formulario de página y en cabecera de sección/card cuando hay varios formularios o tabs.
+5. Los submits externos a un `<form>` usan `form={id}` y cada formulario mantiene un `FormPendingScreen` interno para conservar el loader full-screen durante Server Actions.
+6. SharePoint y el origen tecnico/importado dejan de ser conceptos visibles de producto en la UI; se mantienen solo como infraestructura interna de importacion y auditoria.
+7. Los campos de negocio llamados `Origen` se conservan cuando describen actividad operativa, como CRM comercial o recepcion de facturas.

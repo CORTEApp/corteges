@@ -1,10 +1,12 @@
 import Link from "next/link"
-import { ArrowLeft, CalendarClock, PackagePlus, RefreshCw } from "lucide-react"
+import { ArrowLeft, CalendarClock, PackagePlus, RefreshCw, Save } from "lucide-react"
 
 import { SubscriptionForm } from "@/app/(app)/facturacion/suscripciones/_components/subscription-form"
 import { ResourceEditScreen } from "@/components/resource-screens"
 import { Button } from "@/components/ui/button"
 import { listSubscriptionFormOptions } from "@/lib/billing/data"
+
+const SUBSCRIPTION_FORM_ID = "subscription-create-form"
 
 export default async function NewSubscriptionPage() {
   const { clients, facturables } = await listSubscriptionFormOptions()
@@ -16,12 +18,18 @@ export default async function NewSubscriptionPage() {
         title: "Nueva suscripcion",
         subtitle: "Alta de una recurrencia comercial con snapshot de cliente, concepto e importe.",
         actions: (
-          <Button asChild variant="outline">
-            <Link href="/facturacion/suscripciones">
-              <ArrowLeft aria-hidden="true" />
-              Volver al listado
-            </Link>
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button asChild variant="outline">
+              <Link href="/facturacion/suscripciones">
+                <ArrowLeft aria-hidden="true" />
+                Volver al listado
+              </Link>
+            </Button>
+            <Button type="submit" form={SUBSCRIPTION_FORM_ID}>
+              <Save aria-hidden="true" />
+              Guardar suscripcion
+            </Button>
+          </div>
         ),
       }}
       metrics={[
@@ -32,7 +40,7 @@ export default async function NewSubscriptionPage() {
       ]}
       contentClassName="max-w-5xl"
     >
-      <SubscriptionForm clients={clients} facturables={facturables} />
+      <SubscriptionForm actionsPlacement="page" clients={clients} facturables={facturables} formId={SUBSCRIPTION_FORM_ID} />
     </ResourceEditScreen>
   )
 }

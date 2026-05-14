@@ -1,15 +1,10 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
-import { ArrowLeft, Database, FileText, Pencil, ReceiptText, Tag } from "lucide-react"
+import { ArrowLeft, Pencil, ReceiptText, Tag } from "lucide-react"
 
-import {
-  FacturableFichaReadOnly,
-  FacturableTraceReadOnly,
-} from "@/app/(app)/facturacion/facturables/_components/facturable-readonly-sections"
-import { ResourceContentTabs } from "@/components/resource-content-tabs"
+import { FacturableFichaReadOnly } from "@/app/(app)/facturacion/facturables/_components/facturable-readonly-sections"
 import { ResourceDetailScreen } from "@/components/resource-screens"
 import { Button } from "@/components/ui/button"
-import { FormSectionTabPanel } from "@/components/ui/form-section-tabs"
 import { facturableStateLabel, facturableStateTone, formatAmount } from "@/lib/billing/format"
 import { getFacturableDetail } from "@/lib/billing/data"
 
@@ -58,24 +53,9 @@ export default async function FacturableDetailPage({
         },
         { label: "Tipo", value: facturable.type, icon: <Tag className="size-4" aria-hidden="true" /> },
         { label: "Precio", value: formatAmount(facturable.unit_price) },
-        { label: "Origen", value: facturable.sharepoint_item_id ? "SharePoint" : "Manual", icon: <Database className="size-4" aria-hidden="true" /> },
       ]}
     >
-      <ResourceContentTabs
-        defaultTab="ficha"
-        tabs={[
-          { id: "ficha", label: "Ficha", icon: <FileText className="size-4" aria-hidden="true" /> },
-          { id: "trazabilidad", label: "Trazabilidad", icon: <Database className="size-4" aria-hidden="true" /> },
-        ]}
-      >
-        <FormSectionTabPanel tabId="ficha">
-          <FacturableFichaReadOnly facturable={facturable} />
-        </FormSectionTabPanel>
-
-        <FormSectionTabPanel tabId="trazabilidad">
-          <FacturableTraceReadOnly facturable={facturable} />
-        </FormSectionTabPanel>
-      </ResourceContentTabs>
+      <FacturableFichaReadOnly facturable={facturable} />
     </ResourceDetailScreen>
   )
 }

@@ -74,4 +74,6 @@ export type ExpenseSupplierOption = {
   tax_id: string
   name: string
   active: boolean
+  contact_email?: string | null
+  auto_approve_expense_invoices?: boolean | null
 }

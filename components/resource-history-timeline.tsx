@@ -12,7 +12,6 @@ type FieldKind = "text" | "date" | "boolean"
 export type ResourceHistoryEntry<TSnapshot> = {
   id: string
   effectiveDate: string | null
-  sourceItemId: string | number | null
   current?: boolean
   snapshot: TSnapshot
 }
@@ -90,7 +89,7 @@ function sortedEntries<TSnapshot>(entries: ResourceHistoryEntry<TSnapshot>[]): R
       return dateCompare
     }
 
-    return String(left.sourceItemId || "").localeCompare(String(right.sourceItemId || ""), undefined, {
+    return String(left.id || "").localeCompare(String(right.id || ""), undefined, {
       numeric: true,
     })
   })
@@ -136,7 +135,7 @@ function sortTimelineEventsDesc<TSnapshot>(events: TimelineEvent<TSnapshot>[]): 
       return dateCompare
     }
 
-    return String(right.entry.sourceItemId || "").localeCompare(String(left.entry.sourceItemId || ""), undefined, {
+    return String(right.entry.id || "").localeCompare(String(left.entry.id || ""), undefined, {
       numeric: true,
     })
   })
@@ -157,13 +156,11 @@ function SnapshotModal<TSnapshot>({
   event,
   snapshotSections,
   modalTitle,
-  sourceLabel,
   onClose,
 }: {
   event: TimelineEvent<TSnapshot>
   snapshotSections: ResourceSnapshotSection<TSnapshot>[]
   modalTitle: string
-  sourceLabel: string
   onClose: () => void
 }) {
   const entry = event.entry
@@ -198,9 +195,7 @@ function SnapshotModal<TSnapshot>({
             <h2 className="mt-3 text-xl font-semibold tracking-tight" id="resource-history-snapshot-title">
               {modalTitle}
             </h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {formatDate(entry.effectiveDate)} · {sourceLabel} {entry.sourceItemId || EMPTY_VALUE}
-            </p>
+            <p className="mt-1 text-sm text-muted-foreground">{formatDate(entry.effectiveDate)}</p>
           </div>
           <Button aria-label="Cerrar snapshot" onClick={onClose} size="icon" type="button" variant="ghost">
             <X size={18} />
@@ -234,14 +229,12 @@ export function ResourceHistoryTimeline<TSnapshot>({
   snapshotSections,
   emptyMessage = "Sin histórico disponible.",
   modalTitle = "Snapshot completo",
-  sourceLabel = "Origen",
 }: {
   entries: ResourceHistoryEntry<TSnapshot>[]
   compareFields: ResourceHistoryField<TSnapshot>[]
   snapshotSections: ResourceSnapshotSection<TSnapshot>[]
   emptyMessage?: string
   modalTitle?: string
-  sourceLabel?: string
 }) {
   const events = useMemo(() => sortTimelineEventsDesc(buildTimeline(entries, compareFields)), [compareFields, entries])
   const [selectedEvent, setSelectedEvent] = useState<TimelineEvent<TSnapshot> | null>(null)
@@ -321,7 +314,6 @@ export function ResourceHistoryTimeline<TSnapshot>({
           modalTitle={modalTitle}
           onClose={() => setSelectedEvent(null)}
           snapshotSections={snapshotSections}
-          sourceLabel={sourceLabel}
         />
       ) : null}
     </>

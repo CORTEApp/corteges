@@ -24,6 +24,9 @@
 - `00000000000021_crm_teams_agenda.sql`
 - `00000000000019_sharepoint_binaries.sql`
 - `00000000000029_fiscal_tax_settings.sql`
+- `00000000000030_expense_individuals_deduplication.sql`
+- `00000000000031_expense_invoice_intake_duplicate_review.sql`
+- `00000000000032_supplier_auto_approval.sql`
 
 ## Tablas principales (`public`)
 - `user_profiles`: perfil por usuario (`id` referencia `auth.users`) con preferencias visuales y rol principal.
@@ -42,9 +45,12 @@
 - `billing_payments`: pago completo registrado contra una proforma; V1 no admite nuevos pagos parciales.
 - `billing_number_sequences`: secuencias por tipo, serie y año; las facturas 2026 continuan en `F-2026/137` y desde 2027 reinician por año.
 - `billing_subscriptions`: suscripciones operativas con snapshot de cliente/facturable, vigencia por `start_date/end_date`, cantidad, total recurrente y trazabilidad SharePoint.
-- `suppliers`: maestro operativo de proveedores con contacto, metodo de pago, referencias SEPA/Stripe, vigencia y trazabilidad SharePoint.
+- `suppliers`: maestro operativo de proveedores con contacto, metodo de pago, referencias SEPA/Stripe, vigencia, aprobacion automatica opcional de facturas de gastos y trazabilidad SharePoint.
 - `expense_individuals`: gastos puntuales con proveedor obligatorio, factura, fecha, metodo de pago, base, IVA, total historico/manual, flag de adjunto legado y trazabilidad SharePoint.
 - `expense_individual_documents`: metadata de documentos privados por gasto individual, con hash/metadatos de origen para binarios recuperados.
+- `expense_individual_duplicate_archive`: archivo de auditoria de gastos individuales historicos eliminados por duplicidad de proveedor + factura normalizada.
+- `expense_invoice_intake_items`: recepcion privada de PDFs de proveedores con estados de extraccion, revision, aprobacion y duplicado fiscal operativo.
+- `expense_invoice_intake_documents`: documentos PDF de recepcion con hash unico para evitar reimportar el mismo binario.
 - `crm_opportunities`: oportunidades comerciales con empresa, contacto, peticion, origen/campana, owner, estado pipeline, cierre/descarte, trazabilidad SharePoint y auditoria.
 - `crm_opportunity_activities`: historial de contactos por oportunidad, importado desde Prospectos o creado manualmente.
 - `microsoft_user_connections`: conexion Microsoft por usuario con refresh token cifrado; acceso exclusivo service role.
@@ -96,6 +102,7 @@
 - `handle_new_user()`: crea `user_profiles` al alta en `auth.users`.
 - `is_app_user()`: helper RLS para acceso privado de usuarios autenticados.
 - `has_app_role(text[])` / `is_master_user()`: helpers RLS para administracion de usuarios.
+- `lib/expenses/invoice-intake/approval.ts`: helper server-only compartido para aprobar recepciones de facturas y detectar duplicados fiscales.
 - `next_billing_document_number(text, text, integer)`: reserva atomica de numero por tipo/serie/año.
 - `issue_invoice_from_paid_proforma(uuid, date)`: emite factura fiscal desde proforma pagada dentro de una transaccion con bloqueo.
 - `set_mail_outbox_module_settings(uuid, uuid)`: guarda en una transaccion los buzones asignados a Facturacion y CRM.
@@ -108,7 +115,8 @@
 - `supabase/queries/billing_documents_verification.sql`: assertions de RLS, RPCs, grants y guardas de doble factura del modulo Proformas/Facturas.
 - `supabase/queries/billing_subscriptions_verification.sql`: assertions de RLS, grants, unicidad SharePoint y ausencia de tenants/deletes en Suscripciones.
 - `supabase/queries/suppliers_verification.sql`: assertions de RLS, unicidad fiscal, permisos y ausencia de tenants en Proveedores.
-- `supabase/queries/expense_individuals_verification.sql`: assertions de RLS, grants, bucket privado, FK obligatoria a proveedores, unicidad SharePoint y ausencia de tenants.
+- `supabase/queries/expense_invoice_intake_verification.sql`: assertions de RLS, bucket privado, deduplicacion por hash e indice de proveedor + factura compatible con revision manual.
+- `supabase/queries/expense_individuals_verification.sql`: assertions de RLS, grants, bucket privado, FK obligatoria a proveedores, unicidad SharePoint, unicidad proveedor + factura normalizada, archivo de duplicados y ausencia de tenants.
 - `supabase/queries/sharepoint_binaries_verification.sql`: assertions de inventario binario, buckets privados, RLS/grants, enlaces documentales y ausencia de `company_id`/`management`.
 - `supabase/queries/crm_opportunities_verification.sql`: assertions de RLS, grants, unicidad SharePoint, indice `lead_id`, ausencia de tenants y ausencia de deletes en oportunidades.
 - `supabase/queries/crm_teams_agenda_verification.sql`: assertions de RLS, grants, token table service-role-only, FK a oportunidades y ausencia de `anon`, `company_id` y `management`.

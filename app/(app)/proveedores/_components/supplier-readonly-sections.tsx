@@ -5,8 +5,7 @@ import { DetailField, DetailFieldGrid, DetailTextBlock } from "@/components/deta
 import { Badge } from "@/components/ui/badge"
 import { ConfirmSubmitButton } from "@/components/ui/confirm-submit-button"
 import { FormSection } from "@/components/ui/form-section"
-import { formatDateTime } from "@/lib/utils"
-import { formatSupplierDate, supplierOriginLabel, supplierPaymentMethodLabels } from "@/lib/suppliers/format"
+import { formatSupplierDate, supplierPaymentMethodLabels } from "@/lib/suppliers/format"
 import type { SupplierRecord } from "@/lib/suppliers/types"
 
 export function SupplierFichaReadOnly({ supplier }: { supplier: SupplierRecord }) {
@@ -24,9 +23,16 @@ export function SupplierFichaReadOnly({ supplier }: { supplier: SupplierRecord }
             label="Estado"
             value={<Badge tone={supplier.active ? "success" : "neutral"}>{supplier.active ? "Activo" : "Inactivo"}</Badge>}
           />
+          <DetailField
+            label="Aprobación gastos"
+            value={
+              <Badge tone={supplier.auto_approve_expense_invoices ? "success" : "neutral"}>
+                {supplier.auto_approve_expense_invoices ? "Automática" : "Manual"}
+              </Badge>
+            }
+          />
           <DetailField label="Fecha de inicio" value={formatSupplierDate(supplier.start_date)} />
           <DetailField label="Método de pago" value={supplierPaymentMethodLabels[supplier.payment_method]} />
-          <DetailField label="Origen" value={supplierOriginLabel(supplier)} />
         </DetailFieldGrid>
       </FormSection>
 
@@ -56,30 +62,13 @@ export function SupplierFichaReadOnly({ supplier }: { supplier: SupplierRecord }
   )
 }
 
-export function SupplierTraceReadOnly({ supplier }: { supplier: SupplierRecord }) {
+export function SupplierAdminReadOnly({ supplier }: { supplier: SupplierRecord }) {
   return (
     <div className="grid gap-6">
       <FormSection
-        action={<Badge tone={supplier.sharepoint_item_id ? "info" : "neutral"}>{supplierOriginLabel(supplier)}</Badge>}
-        className="border-l-4 border-l-primary/45"
-        title="Origen del registro"
-      >
-        <DetailFieldGrid>
-          <DetailField label="SharePoint site" value={supplier.sharepoint_site_id} />
-          <DetailField label="SharePoint list" value={supplier.sharepoint_list_id} />
-          <DetailField label="SharePoint item" value={supplier.sharepoint_item_id} />
-          <DetailField label="SharePoint unique id" value={supplier.sharepoint_unique_id} />
-          <DetailField label="SharePoint etag" value={supplier.sharepoint_etag} />
-          <DetailField label="Importado" value={supplier.imported_at ? formatDateTime(supplier.imported_at) : "-"} />
-          <DetailField label="Creado" value={formatDateTime(supplier.created_at)} />
-          <DetailField label="Actualizado" value={formatDateTime(supplier.updated_at)} />
-        </DetailFieldGrid>
-      </FormSection>
-
-      <FormSection
         className="border-l-4 border-l-red-300"
         title="Eliminación"
-        description="Borra el proveedor de la base local. No modifica la lista SharePoint de origen."
+        description="Borra el proveedor de la base local si ya no debe existir en el maestro operativo."
       >
         <form action={deleteSupplierAction}>
           <input type="hidden" name="supplier_id" value={supplier.id} />

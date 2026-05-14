@@ -92,6 +92,10 @@ export type ExpenseInvoiceIntakeEvent = {
   from_status: ExpenseInvoiceIntakeStatus | null
   to_status: ExpenseInvoiceIntakeStatus | null
   actor_user_id: string | null
+  actor_profile: {
+    display_name: string | null
+    email: string | null
+  } | null
   payload: unknown
   created_at: string
 }
@@ -144,4 +148,3 @@ export type SupplierTemplateRules = {
   version: 1
   fields: Partial<Record<keyof ExtractedInvoiceDraft, SupplierTemplateFieldRule>>
 }
-

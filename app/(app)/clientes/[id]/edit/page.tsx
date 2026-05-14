@@ -59,7 +59,7 @@ export default async function EditClientPage({
         ]}
       >
         <FormSectionTabPanel tabId="datos">
-          <ClientForm client={client} cancelHref={`/clientes/${client.id}`} />
+          <ClientForm client={client} formId={`client-edit-form-${client.id}`} />
         </FormSectionTabPanel>
 
         <FormSectionTabPanel tabId="documentos">

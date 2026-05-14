@@ -174,6 +174,79 @@ function chunks(items, size) {
   return result
 }
 
+function normalizeInvoiceNumber(value) {
+  return String(value ?? '').trim().toUpperCase()
+}
+
+function expenseInvoiceDedupKey(row) {
+  const invoiceNumber = normalizeInvoiceNumber(row.invoice_number)
+  return row.supplier_id && invoiceNumber ? `${row.supplier_id}::${invoiceNumber}` : null
+}
+
+function compareOptionalText(a, b) {
+  const left = cleanText(a)
+  const right = cleanText(b)
+  if (left && right && left !== right) {
+    return left.localeCompare(right)
+  }
+  if (left && !right) {
+    return -1
+  }
+  if (!left && right) {
+    return 1
+  }
+  return 0
+}
+
+function compareOptionalNumber(a, b) {
+  const left = Number.isFinite(a) ? a : Number.MAX_SAFE_INTEGER
+  const right = Number.isFinite(b) ? b : Number.MAX_SAFE_INTEGER
+  return left - right
+}
+
+function compareCanonicalExpenseRows(a, b) {
+  return (
+    compareOptionalText(a.imported_at, b.imported_at) ||
+    compareOptionalText(a.created_at, b.created_at) ||
+    compareOptionalNumber(a.sharepoint_item_id, b.sharepoint_item_id) ||
+    compareOptionalText(a.id, b.id)
+  )
+}
+
+function deduplicateExpenseRows(rows) {
+  const entries = []
+  const entryByKey = new Map()
+  const duplicateRows = []
+
+  for (const row of rows) {
+    const key = expenseInvoiceDedupKey(row)
+    if (!key) {
+      entries.push({ row })
+      continue
+    }
+
+    const current = entryByKey.get(key)
+    if (!current) {
+      const entry = { key, row }
+      entryByKey.set(key, entry)
+      entries.push(entry)
+      continue
+    }
+
+    if (compareCanonicalExpenseRows(row, current.row) < 0) {
+      duplicateRows.push(current.row)
+      current.row = row
+    } else {
+      duplicateRows.push(row)
+    }
+  }
+
+  return {
+    rows: entries.map((entry) => entry.row),
+    duplicateRows,
+  }
+}
+
 function resolveServiceKey(env) {
   const key = env.SUPABASE_SECRET_KEY || env.SUPABASE_SERVICE_ROLE_KEY
   if (!key) {
@@ -212,7 +285,7 @@ function isHistoricalMismatch(row) {
   return Math.abs(expected - row.total_amount) > 0.02
 }
 
-function mapExpenseItem(item, { listId, siteId, supplierByTaxId }) {
+function mapExpenseItem(item, { listId, siteId, supplierByTaxId, importedAt }) {
   const values = item.Values ?? {}
   const taxId = requiredText(values.CIF, 'CIF')
   const supplier = supplierByTaxId.get(normalizeTaxId(taxId))
@@ -258,7 +331,7 @@ function mapExpenseItem(item, { listId, siteId, supplierByTaxId }) {
     sharepoint_unique_id: cleanText(item.UniqueId ?? values.GUID),
     sharepoint_etag: cleanText(item.ETag ?? values['@odata.etag']),
     source_raw: item,
-    imported_at: new Date().toISOString(),
+    imported_at: importedAt,
   }
 }
 
@@ -307,19 +380,23 @@ async function main() {
   const items = asArray(readJson(path.join(exportDir, 'items', `${listId}.json`), []))
   const siteId = cleanGuid(site.Id) || env.SHAREPOINT_SITE_URL || 'sharepoint-site'
   const supplierByTaxId = await loadSupplierMap(supabase)
-  const rows = items.map((item) => mapExpenseItem(item, { listId, siteId, supplierByTaxId }))
-  const n26Count = rows.filter((row) => row.payment_method === 'n26').length
-  const caixaCount = rows.filter((row) => row.payment_method === 'caixa').length
-  const vat0Count = rows.filter((row) => row.vat_rate === 0).length
-  const vat21Count = rows.filter((row) => row.vat_rate === 21).length
-  const missingNetCount = rows.filter((row) => row.net_amount == null).length
-  const mismatchCount = rows.filter(isHistoricalMismatch).length
-  const linkedSupplierCount = rows.filter((row) => row.supplier_id).length
-  const legacyAttachmentCount = rows.filter((row) => row.legacy_has_attachment).length
+  const importedAt = new Date().toISOString()
+  const rows = items.map((item) => mapExpenseItem(item, { listId, siteId, supplierByTaxId, importedAt }))
+  const { rows: importRows, duplicateRows } = deduplicateExpenseRows(rows)
+  const n26Count = importRows.filter((row) => row.payment_method === 'n26').length
+  const caixaCount = importRows.filter((row) => row.payment_method === 'caixa').length
+  const vat0Count = importRows.filter((row) => row.vat_rate === 0).length
+  const vat21Count = importRows.filter((row) => row.vat_rate === 21).length
+  const missingNetCount = importRows.filter((row) => row.net_amount == null).length
+  const mismatchCount = importRows.filter(isHistoricalMismatch).length
+  const linkedSupplierCount = importRows.filter((row) => row.supplier_id).length
+  const legacyAttachmentCount = importRows.filter((row) => row.legacy_has_attachment).length
 
   console.log(`Gastos source list: ${listId}`)
   console.log(`SharePoint items: ${items.length}`)
   console.log(`Mapped expense individuals: ${rows.length}`)
+  console.log(`Duplicate expense rows skipped: ${duplicateRows.length}`)
+  console.log(`Expense individuals to upsert: ${importRows.length}`)
   console.log(`Supplier links: ${linkedSupplierCount}`)
   console.log(`N26 expenses: ${n26Count}`)
   console.log(`Caixa expenses: ${caixaCount}`)
@@ -334,13 +411,13 @@ async function main() {
   }
 
   if (args['dry-run']) {
-    if (rows[0]) {
-      console.log(`First mapped expense: ${JSON.stringify(rows[0], null, 2)}`)
+    if (importRows[0]) {
+      console.log(`First mapped expense: ${JSON.stringify(importRows[0], null, 2)}`)
     }
     return
   }
 
-  const saved = await upsertExpenses(supabase, rows, batchSize)
+  const saved = await upsertExpenses(supabase, importRows, batchSize)
   console.log(`Upserted expense individuals: ${saved.length}`)
 }
 

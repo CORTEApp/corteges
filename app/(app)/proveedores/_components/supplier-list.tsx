@@ -1,6 +1,6 @@
 import type { ReactNode } from "react"
 import Link from "next/link"
-import { CreditCard, Database, Mail, Phone, Plus, Search } from "lucide-react"
+import { CreditCard, Mail, Phone, Plus, Search } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -10,7 +10,7 @@ import { FilterSidebarCard } from "@/components/ui/filter-sidebar-card"
 import { Input } from "@/components/ui/input"
 import { MobileRecordActions, MobileRecordCard, MobileRecordField, MobileRecordGrid } from "@/components/ui/mobile-record-card"
 import { Select } from "@/components/ui/select"
-import { supplierOriginLabel, supplierPaymentMethodLabels } from "@/lib/suppliers/format"
+import { supplierPaymentMethodLabels } from "@/lib/suppliers/format"
 import type { SupplierFilters, SupplierListItem } from "@/lib/suppliers/types"
 
 const paymentOptions = [
@@ -114,7 +114,7 @@ export function SuppliersTable({ suppliers }: { suppliers: SupplierListItem[] })
     <Card>
       <CardHeader>
         <CardTitle>Maestro de proveedores</CardTitle>
-        <CardDescription>Vista compacta para localizar proveedor, contacto, forma de pago y origen.</CardDescription>
+        <CardDescription>Vista compacta para localizar proveedor, contacto y forma de pago.</CardDescription>
       </CardHeader>
 
       <CardContent className="space-y-4">
@@ -139,7 +139,6 @@ export function SuppliersTable({ suppliers }: { suppliers: SupplierListItem[] })
                 <MobileRecordField label="Teléfono" value={supplier.contact_phone ?? "-"} />
                 <MobileRecordField label="Email" value={supplier.contact_email ?? "-"} className="col-span-2" />
                 <MobileRecordField label="Pago" value={supplierPaymentMethodLabels[supplier.payment_method]} />
-                <MobileRecordField label="Origen" value={supplierOriginLabel(supplier)} />
               </MobileRecordGrid>
             </MobileRecordCard>
           ))}
@@ -155,7 +154,6 @@ export function SuppliersTable({ suppliers }: { suppliers: SupplierListItem[] })
                 <th className="px-4 py-3 text-left font-medium">Teléfono</th>
                 <th className="px-4 py-3 text-left font-medium">Email</th>
                 <th className="px-4 py-3 text-left font-medium">Estado</th>
-                <th className="px-4 py-3 text-left font-medium">Origen</th>
               </tr>
             </thead>
             <tbody>
@@ -196,12 +194,6 @@ export function SuppliersTable({ suppliers }: { suppliers: SupplierListItem[] })
                   </td>
                   <td className="px-4 py-4 align-top">
                     <SupplierStatusBadge supplier={supplier} />
-                  </td>
-                  <td className="px-4 py-4 align-top text-foreground/80">
-                    <span className="inline-flex items-center gap-2">
-                      <Database className="size-3 text-primary" aria-hidden="true" />
-                      {supplierOriginLabel(supplier)}
-                    </span>
                   </td>
                 </tr>
               ))}

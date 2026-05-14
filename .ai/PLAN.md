@@ -39,3 +39,11 @@
 37. [x] Aplicar migracion remota de agenda Teams via `SESSION_POOLER` y verificar `supabase/queries/crm_teams_agenda_verification.sql`.
 38. [x] Implementar `Estadisticas > Facturacion` con tabs T1-T4/Anual, vistas de gastos, ingresos, declaracion de impuestos, CSV y configuracion fiscal IRPF en `/settings`.
 39. [x] Aplicar en Supabase remoto `00000000000029_fiscal_tax_settings.sql` y verificar `supabase/queries/fiscal_tax_settings_verification.sql`.
+40. [x] Implementar y aplicar en remoto `00000000000030_expense_individuals_deduplication.sql` para impedir duplicados por proveedor + factura normalizada en gastos individuales.
+41. [x] Ajustar `Gastos > Recepcion` para abrir por defecto en `requiere_revision` y marcar duplicados por hash/proveedor-factura durante importacion.
+42. [x] Mejorar extractor determinista de `Gastos > Recepcion` para facturas Stripe/internacionales, VAT OSS, fechas textuales e importes con punto decimal.
+43. [x] Añadir aprobación automática opcional por proveedor para facturas de gastos extraídas, completas y sin duplicados.
+44. [x] Añadir confirmación al activar aprobación automática si hay recepciones `extraida` elegibles del proveedor.
+45. [x] Añadir loader full-screen Atlas para navegacion lenta, login/logout y acciones bloqueantes con umbral de 300 ms.
+46. [x] Mover `Guardar`/`Crear`/`Actualizar` y `Volver` de los footers de formulario a cabeceras de página, sección o card.
+47. [x] Retirar de la UI referencias a SharePoint, `Origen del registro` y trazabilidad técnica de importación.

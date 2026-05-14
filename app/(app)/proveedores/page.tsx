@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { Building2, CreditCard, Database, Plus } from "lucide-react"
+import { Building2, CreditCard, Landmark, Plus } from "lucide-react"
 
 import { SupplierFiltersBar, SuppliersTable } from "@/app/(app)/proveedores/_components/supplier-list"
 import { ResourceListScreen } from "@/components/resource-screens"
@@ -33,7 +33,7 @@ export default async function ProveedoresPage({
       header={{
         icon: <Building2 className="size-6" aria-hidden="true" />,
         title: "Proveedores",
-        subtitle: "Maestro operativo para contactos, pago y origen de proveedores.",
+        subtitle: "Maestro operativo para contactos y pagos de proveedores.",
         actions: (
           <Button asChild>
             <Link href="/proveedores/nuevo">
@@ -46,7 +46,7 @@ export default async function ProveedoresPage({
       metrics={[
         { label: "Proveedores", value: String(suppliers.length), description: "Resultado del filtro actual", icon: <Building2 className="size-4" aria-hidden="true" /> },
         { label: "Activos", value: String(activeCount), tone: "success" },
-        { label: "SEPA", value: String(sepaCount), icon: <Database className="size-4" aria-hidden="true" /> },
+        { label: "SEPA", value: String(sepaCount), icon: <Landmark className="size-4" aria-hidden="true" /> },
         { label: "Stripe", value: String(stripeCount), icon: <CreditCard className="size-4" aria-hidden="true" /> },
       ]}
     >

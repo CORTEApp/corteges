@@ -1,0 +1,34 @@
+Page 1 of 1
+Invoice
+Invoice number7B9E7642{NUL}0028
+Date of issueApril 28, 2026
+Date dueApril 28, 2026
+OpenAI OpCo, LLC
+1455 3rd Street
+San Francisco, California 94158
+United States
+ar@openai.com
+EU OSS VATEU372041333
+Bill to
+Example Buyer
+Example Street 1
+00000 Example City
+Spain
+buyer@example.test
+ES NIF00000000T
+$242.00 USD due April 28, 2026
+Pay online
+DescriptionQty
+Unit price
+Tax
+Amount
+ChatGPT Pro Subscription (per seat)
+Apr 28{NUL}May 28, 2026
+1$200.0021%$200.00
+Subtotal$200.00
+Total excluding tax$200.00
+VAT - Spain {NUL}21% on $200.00
+$42.00
+{NUL}EUR 35.91{NUL}
+Total$242.00
+Amount due$242.00 USD

@@ -1,12 +1,11 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
-import { ArrowLeft, CalendarClock, Database, MessageSquareText, Pencil, Settings2, Target, UserRound } from "lucide-react"
+import { ArrowLeft, CalendarClock, MessageSquareText, Pencil, Settings2, Target, UserRound } from "lucide-react"
 
 import {
   OpportunityActivitiesSection,
   OpportunityFichaReadOnly,
   OpportunityManagementSection,
-  OpportunityTraceReadOnly,
 } from "@/app/(app)/crm/oportunidades/_components/opportunity-readonly-sections"
 import { ResourceContentTabs } from "@/components/resource-content-tabs"
 import { ResourceDetailScreen } from "@/components/resource-screens"
@@ -15,7 +14,6 @@ import { FormSectionTabPanel } from "@/components/ui/form-section-tabs"
 import {
   formatOpportunityDateTime,
   formatOpportunityMoney,
-  opportunityOriginLabel,
   opportunityStatusLabels,
 } from "@/lib/crm/format"
 import { getCRMOpportunityDetail } from "@/lib/crm/data"
@@ -61,7 +59,6 @@ export default async function CRMOpportunityDetailPage({
         { label: "Estado", value: opportunityStatusLabels[opportunity.status] },
         { label: "Precio inicial", value: formatOpportunityMoney(opportunity.initial_price) },
         { label: "Proximo contacto", value: formatOpportunityDateTime(opportunity.next_contact_at), icon: <CalendarClock className="size-4" aria-hidden="true" /> },
-        { label: "Origen", value: opportunityOriginLabel(opportunity), icon: <Database className="size-4" aria-hidden="true" /> },
       ]}
     >
       <ResourceContentTabs
@@ -70,7 +67,6 @@ export default async function CRMOpportunityDetailPage({
           { id: "gestion", label: "Gestion", icon: <Settings2 className="size-4" aria-hidden="true" /> },
           { id: "ficha", label: "Ficha", icon: <UserRound className="size-4" aria-hidden="true" /> },
           { id: "contactos", label: "Contactos", icon: <MessageSquareText className="size-4" aria-hidden="true" /> },
-          { id: "origen", label: "Origen", icon: <Database className="size-4" aria-hidden="true" /> },
         ]}
       >
         <FormSectionTabPanel tabId="gestion">
@@ -90,9 +86,6 @@ export default async function CRMOpportunityDetailPage({
           <OpportunityActivitiesSection opportunity={opportunity} activities={activities} />
         </FormSectionTabPanel>
 
-        <FormSectionTabPanel tabId="origen">
-          <OpportunityTraceReadOnly opportunity={opportunity} />
-        </FormSectionTabPanel>
       </ResourceContentTabs>
     </ResourceDetailScreen>
   )

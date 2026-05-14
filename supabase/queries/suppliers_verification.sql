@@ -50,6 +50,22 @@ end $$;
 
 do $$
 begin
+  if not exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'suppliers'
+      and column_name = 'auto_approve_expense_invoices'
+      and is_nullable = 'NO'
+      and data_type = 'boolean'
+      and column_default = 'false'
+  ) then
+    raise exception 'Missing supplier expense auto approval flag';
+  end if;
+end $$;
+
+do $$
+begin
   if exists (
     select 1
     from information_schema.table_privileges

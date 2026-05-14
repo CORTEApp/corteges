@@ -25,17 +25,32 @@ function Notice({ params }: { params: Record<string, string | string[] | undefin
   const imported = numberParam(params.imported)
   const skipped = numberParam(params.skipped)
   const scanned = numberParam(params.scanned)
+  const duplicateHash = numberParam(params.duplicateHash)
+  const duplicateInvoice = numberParam(params.duplicateInvoice)
 
-  if (!uploaded && !imported && !skipped && !scanned) {
+  if (!uploaded && !imported && !skipped && !scanned && !duplicateHash && !duplicateInvoice) {
     return null
   }
 
+  const hasWarning = Boolean(skipped || duplicateHash || duplicateInvoice)
+
   return (
-    <div className="rounded-[var(--radius-panel)] border border-primary/15 bg-primary/10 px-3 py-2 text-sm leading-6 text-primary">
+    <div className={`rounded-[var(--radius-panel)] border px-3 py-2 text-sm leading-6 ${
+      hasWarning
+        ? "border-amber-200/80 bg-amber-50 text-amber-900"
+        : "border-primary/15 bg-primary/10 text-primary"
+    }`}>
       {uploaded ? <div>{uploaded} PDF subido{uploaded === 1 ? "" : "s"}.</div> : null}
       {imported ? <div>{imported} adjunto{imported === 1 ? "" : "s"} importado{imported === 1 ? "" : "s"}.</div> : null}
       {scanned ? <div>{scanned} adjunto{scanned === 1 ? "" : "s"} PDF revisado{scanned === 1 ? "" : "s"}.</div> : null}
-      {skipped ? <div>{skipped} archivo{skipped === 1 ? "" : "s"} omitido{skipped === 1 ? "" : "s"} por duplicado o formato.</div> : null}
+      {duplicateHash ? <div>{duplicateHash} PDF omitido{duplicateHash === 1 ? "" : "s"} porque ya existe el mismo hash o adjunto.</div> : null}
+      {duplicateInvoice ? (
+        <div>
+          {duplicateInvoice} factura{duplicateInvoice === 1 ? "" : "s"} marcada{duplicateInvoice === 1 ? "" : "s"} como posible duplicado.
+          Revision exhaustiva recomendada antes de aprobar.
+        </div>
+      ) : null}
+      {skipped ? <div>{skipped} archivo{skipped === 1 ? "" : "s"} omitido{skipped === 1 ? "" : "s"} por formato no PDF.</div> : null}
     </div>
   )
 }
@@ -48,7 +63,7 @@ export default async function ExpenseInvoiceIntakePage({
   const params = (await searchParams) ?? {}
   const filters: ExpenseInvoiceIntakeFilters = {
     q: one(params.q),
-    status: one(params.status) ?? "all",
+    status: one(params.status) ?? "requiere_revision",
     supplier: one(params.supplier) ?? "all",
     source: one(params.source) ?? "all",
   }

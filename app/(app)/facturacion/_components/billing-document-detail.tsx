@@ -115,7 +115,7 @@ export function BillingDocumentDetailView({
           <Card>
             <CardHeader>
               <CardTitle>Documentos</CardTitle>
-              <CardDescription>Adjuntos historicos y PDFs generados del documento.</CardDescription>
+              <CardDescription>Adjuntos y PDFs generados del documento.</CardDescription>
             </CardHeader>
             <CardContent className="grid gap-3">
               {files.map((file) => (
@@ -131,7 +131,6 @@ export function BillingDocumentDetailView({
                     </span>
                     <span className="mt-1 block text-xs text-muted-foreground">
                       {billingFileSourceLabel(file.source_kind)}
-                      {file.source_sha256 ? ` · ${file.source_sha256.slice(0, 12)}` : ""}
                     </span>
                   </span>
                   <span className="text-sm text-muted-foreground">{formatFileSize(file.file_size)}</span>
@@ -147,7 +146,7 @@ export function BillingDocumentDetailView({
         <Card>
           <CardHeader>
             <CardTitle>Estado</CardTitle>
-            <CardDescription>Trazabilidad comercial y fiscal.</CardDescription>
+            <CardDescription>Estado comercial y fiscal.</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-3">
             <div className="flex flex-wrap gap-2">
@@ -221,7 +220,7 @@ export function BillingDocumentDetailView({
 
 function billingFileSourceLabel(sourceKind: BillingDocumentDetail["files"][number]["source_kind"]) {
   if (sourceKind === "sharepoint") {
-    return "Origen SharePoint"
+    return "Archivo disponible"
   }
 
   if (sourceKind === "generated") {

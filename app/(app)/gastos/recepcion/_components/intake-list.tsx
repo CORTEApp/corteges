@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { EmptyState } from "@/components/ui/empty-state"
 import { FilterSidebarCard } from "@/components/ui/filter-sidebar-card"
+import { FormSubmitButton } from "@/components/ui/form-submit-button"
 import { Input } from "@/components/ui/input"
 import {
   MobileRecordActions,
@@ -74,10 +75,10 @@ export function ExpenseInvoiceIntakePanel({
           Subida manual
         </div>
         <Input type="file" name="files" accept="application/pdf,.pdf" multiple required />
-        <Button type="submit" className="w-full">
+        <FormSubmitButton className="w-full" pendingLabel="Subiendo PDFs...">
           <UploadCloud aria-hidden="true" />
           Subir PDFs
-        </Button>
+        </FormSubmitButton>
       </form>
 
       <form action={importExpenseInvoiceEmailAction} className="space-y-3 rounded-[var(--radius-panel)] border border-border/75 bg-[color:var(--surface-2)]/45 p-3.5">
@@ -112,10 +113,10 @@ export function ExpenseInvoiceIntakePanel({
         <SidebarField label="Mensajes" htmlFor="max_messages">
           <Input id="max_messages" name="max_messages" type="number" min={1} max={50} defaultValue={25} />
         </SidebarField>
-        <Button type="submit" className="w-full" variant="secondary">
+        <FormSubmitButton className="w-full" pendingLabel="Importando adjuntos..." variant="secondary">
           <Inbox aria-hidden="true" />
           Importar adjuntos
-        </Button>
+        </FormSubmitButton>
       </form>
 
       <form className="space-y-5 border-t border-border/70 pt-5">
@@ -177,14 +178,7 @@ export function ExpenseInvoiceIntakePanel({
 }
 
 export function ExpenseInvoiceIntakeTable({ items }: { items: ExpenseInvoiceIntakeListItem[] }) {
-  if (items.length === 0) {
-    return (
-      <EmptyState
-        title="No hay facturas en recepcion."
-        description="Sube PDFs o importa adjuntos desde email para preparar gastos individuales."
-      />
-    )
-  }
+  const isEmpty = items.length === 0
 
   return (
     <Card>
@@ -194,29 +188,36 @@ export function ExpenseInvoiceIntakeTable({ items }: { items: ExpenseInvoiceInta
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-3 lg:hidden">
-          {items.map((item) => (
-            <MobileRecordCard
-              key={`mobile-${item.id}`}
-              eyebrow={item.invoice_number ?? item.primary_document?.file_name ?? "PDF recibido"}
-              title={item.title ?? item.supplier_name ?? "Factura pendiente"}
-              subtitle={item.supplier_name ?? invoiceIntakeSourceLabels[item.source_kind]}
-              headerSlot={<StatusBadge status={item.status} />}
-              footer={
-                <MobileRecordActions>
-                  <Button asChild type="button" variant="outline" size="sm" className="w-full justify-center">
-                    <Link href={`/gastos/recepcion/${item.id}`}>Revisar</Link>
-                  </Button>
-                </MobileRecordActions>
-              }
-            >
-              <MobileRecordGrid className="grid-cols-2">
-                <MobileRecordField label="Fecha" value={formatExpenseDate(item.invoice_date)} />
-                <MobileRecordField label="Total" value={formatExpenseAmountCompact(item.total_amount)} />
-                <MobileRecordField label="Origen" value={invoiceIntakeSourceLabels[item.source_kind]} />
-                <MobileRecordField label="Archivo" value={item.primary_document?.file_name ?? "-"} />
-              </MobileRecordGrid>
-            </MobileRecordCard>
-          ))}
+          {isEmpty ? (
+            <EmptyState
+              title="No hay facturas en recepcion."
+              description="Sube PDFs o importa adjuntos desde email para preparar gastos individuales."
+            />
+          ) : (
+            items.map((item) => (
+              <MobileRecordCard
+                key={`mobile-${item.id}`}
+                eyebrow={item.invoice_number ?? item.primary_document?.file_name ?? "PDF recibido"}
+                title={item.title ?? item.supplier_name ?? "Factura pendiente"}
+                subtitle={item.supplier_name ?? invoiceIntakeSourceLabels[item.source_kind]}
+                headerSlot={<StatusBadge status={item.status} />}
+                footer={
+                  <MobileRecordActions>
+                    <Button asChild type="button" variant="outline" size="sm" className="w-full justify-center">
+                      <Link href={`/gastos/recepcion/${item.id}`}>Revisar</Link>
+                    </Button>
+                  </MobileRecordActions>
+                }
+              >
+                <MobileRecordGrid className="grid-cols-2">
+                  <MobileRecordField label="Fecha" value={formatExpenseDate(item.invoice_date)} />
+                  <MobileRecordField label="Total" value={formatExpenseAmountCompact(item.total_amount)} />
+                  <MobileRecordField label="Origen" value={invoiceIntakeSourceLabels[item.source_kind]} />
+                  <MobileRecordField label="Archivo" value={item.primary_document?.file_name ?? "-"} />
+                </MobileRecordGrid>
+              </MobileRecordCard>
+            ))
+          )}
         </div>
 
         <div className="hidden overflow-x-auto lg:block">
@@ -233,47 +234,55 @@ export function ExpenseInvoiceIntakeTable({ items }: { items: ExpenseInvoiceInta
               </tr>
             </thead>
             <tbody>
-              {items.map((item) => (
-                <tr key={item.id} className="border-t border-border/80">
-                  <td className="max-w-[24rem] px-4 py-4 align-top">
-                    <Link href={`/gastos/recepcion/${item.id}`} className="font-semibold text-foreground no-underline">
-                      {item.title ?? item.invoice_number ?? item.primary_document?.file_name ?? "Factura recibida"}
-                    </Link>
-                    <div className="mt-1 flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
-                      <FileText className="size-3.5" aria-hidden="true" />
-                      <span className="truncate">{item.primary_document?.file_name ?? "Sin documento"}</span>
-                    </div>
-                    {item.last_error ? <div className="mt-1 text-xs text-amber-700">{item.last_error}</div> : null}
-                  </td>
-                  <td className="max-w-[18rem] px-4 py-4 align-top text-foreground/85">
-                    <span className="block truncate font-semibold text-foreground">{item.supplier_name ?? "Sin proveedor"}</span>
-                    <span className="mt-1 block text-xs text-muted-foreground">{item.supplier_tax_id ?? "-"}</span>
-                  </td>
-                  <td className="px-4 py-4 align-top text-foreground/85">
-                    <span className="block">{invoiceIntakeSourceLabels[item.source_kind]}</span>
-                    <span className="mt-1 block max-w-[12rem] truncate text-xs text-muted-foreground">
-                      {item.primary_document?.sender_email ?? item.primary_document?.source_sha256.slice(0, 12) ?? "-"}
-                    </span>
-                  </td>
-                  <td className="px-4 py-4 align-top text-foreground/85">{formatExpenseDate(item.invoice_date)}</td>
-                  <td className="px-4 py-4 text-right align-top font-semibold text-foreground">
-                    {formatExpenseAmountCompact(item.total_amount)}
-                  </td>
-                  <td className="px-4 py-4 align-top">
-                    <StatusBadge status={item.status} />
-                    {item.primary_document ? (
-                      <div className="mt-2 text-xs text-muted-foreground">{formatExpenseFileSize(item.primary_document.file_size)}</div>
-                    ) : null}
-                  </td>
-                  <td className="px-4 py-4 text-right align-top">
-                    <Button asChild size="icon-sm" variant="ghost" aria-label="Revisar factura">
-                      <Link href={`/gastos/recepcion/${item.id}`}>
-                        <ArrowRight className="size-4" aria-hidden="true" />
-                      </Link>
-                    </Button>
+              {isEmpty ? (
+                <tr className="border-t border-border/80">
+                  <td colSpan={7} className="px-4 py-10 text-center text-sm text-muted-foreground">
+                    No hay facturas en recepcion para este filtro.
                   </td>
                 </tr>
-              ))}
+              ) : (
+                items.map((item) => (
+                  <tr key={item.id} className="border-t border-border/80">
+                    <td className="max-w-[24rem] px-4 py-4 align-top">
+                      <Link href={`/gastos/recepcion/${item.id}`} className="font-semibold text-foreground no-underline">
+                        {item.title ?? item.invoice_number ?? item.primary_document?.file_name ?? "Factura recibida"}
+                      </Link>
+                      <div className="mt-1 flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
+                        <FileText className="size-3.5" aria-hidden="true" />
+                        <span className="truncate">{item.primary_document?.file_name ?? "Sin documento"}</span>
+                      </div>
+                      {item.last_error ? <div className="mt-1 text-xs text-amber-700">{item.last_error}</div> : null}
+                    </td>
+                    <td className="max-w-[18rem] px-4 py-4 align-top text-foreground/85">
+                      <span className="block truncate font-semibold text-foreground">{item.supplier_name ?? "Sin proveedor"}</span>
+                      <span className="mt-1 block text-xs text-muted-foreground">{item.supplier_tax_id ?? "-"}</span>
+                    </td>
+                    <td className="px-4 py-4 align-top text-foreground/85">
+                      <span className="block">{invoiceIntakeSourceLabels[item.source_kind]}</span>
+                      <span className="mt-1 block max-w-[12rem] truncate text-xs text-muted-foreground">
+                        {item.primary_document?.sender_email ?? item.primary_document?.file_name ?? "-"}
+                      </span>
+                    </td>
+                    <td className="px-4 py-4 align-top text-foreground/85">{formatExpenseDate(item.invoice_date)}</td>
+                    <td className="px-4 py-4 text-right align-top font-semibold text-foreground">
+                      {formatExpenseAmountCompact(item.total_amount)}
+                    </td>
+                    <td className="px-4 py-4 align-top">
+                      <StatusBadge status={item.status} />
+                      {item.primary_document ? (
+                        <div className="mt-2 text-xs text-muted-foreground">{formatExpenseFileSize(item.primary_document.file_size)}</div>
+                      ) : null}
+                    </td>
+                    <td className="px-4 py-4 text-right align-top">
+                      <Button asChild size="icon-sm" variant="ghost" aria-label="Revisar factura">
+                        <Link href={`/gastos/recepcion/${item.id}`}>
+                          <ArrowRight className="size-4" aria-hidden="true" />
+                        </Link>
+                      </Button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

@@ -9,6 +9,16 @@ import type { ExpensePaymentMethod } from "@/lib/expenses/types"
 import { createClient } from "@/lib/supabase/server"
 
 const PAYMENT_METHODS = new Set<ExpensePaymentMethod>(["n26", "caixa", "other"])
+const EXPENSE_INVOICE_UNIQUE_INDEX = "idx_expense_individuals_supplier_invoice_unique"
+const DUPLICATE_EXPENSE_INVOICE_MESSAGE =
+  "Ya existe un gasto individual para este proveedor y numero de factura."
+
+type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>
+type DatabaseError = {
+  code?: string | null
+  message?: string | null
+  details?: string | null
+}
 
 function textValue(formData: FormData, key: string) {
   const value = formData.get(key)
@@ -55,6 +65,19 @@ function roundMoney(value: number) {
   return Math.round((value + Number.EPSILON) * 100) / 100
 }
 
+function normalizeInvoiceNumber(value: string) {
+  return value.trim().toUpperCase()
+}
+
+function expenseDatabaseErrorMessage(error: DatabaseError) {
+  const databaseMessage = [error.message, error.details].filter(Boolean).join(" ")
+  if (error.code === "23505" || databaseMessage.includes(EXPENSE_INVOICE_UNIQUE_INDEX)) {
+    return DUPLICATE_EXPENSE_INVOICE_MESSAGE
+  }
+
+  return error.message ?? "No se pudo guardar el gasto individual."
+}
+
 function safeFileName(value: string) {
   return value
     .normalize("NFKD")
@@ -71,10 +94,7 @@ async function getActionContext(nextPath: string) {
   return { supabase, userId: user.id }
 }
 
-async function supplierSnapshot(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  supplierId: string,
-) {
+async function supplierSnapshot(supabase: SupabaseServerClient, supplierId: string) {
   const { data, error } = await supabase
     .from("suppliers")
     .select("id, tax_id, name")
@@ -86,6 +106,39 @@ async function supplierSnapshot(
   }
 
   return data as { id: string; tax_id: string; name: string }
+}
+
+async function assertUniqueExpenseInvoice(
+  supabase: SupabaseServerClient,
+  supplierId: string,
+  invoiceNumber: string,
+  expenseId?: string | null,
+) {
+  const invoiceKey = normalizeInvoiceNumber(invoiceNumber)
+  if (!invoiceKey) {
+    return
+  }
+
+  const { data, error } = await supabase
+    .from("expense_individuals")
+    .select("id, invoice_number")
+    .eq("supplier_id", supplierId)
+    .not("invoice_number", "is", null)
+    .limit(2000)
+
+  if (error) {
+    throw error
+  }
+
+  const duplicate = ((data ?? []) as Array<{ id: string; invoice_number: string | null }>).find(
+    (expense) =>
+      expense.id !== expenseId &&
+      normalizeInvoiceNumber(expense.invoice_number ?? "") === invoiceKey,
+  )
+
+  if (duplicate) {
+    throw new Error(DUPLICATE_EXPENSE_INVOICE_MESSAGE)
+  }
 }
 
 function revalidateExpensePaths(expenseId?: string) {
@@ -121,6 +174,8 @@ export async function saveExpenseIndividualAction(formData: FormData) {
     updated_by: userId,
   }
 
+  await assertUniqueExpenseInvoice(supabase, supplier.id, payload.invoice_number, expenseId)
+
   if (expenseId) {
     const { error } = await supabase
       .from("expense_individuals")
@@ -128,7 +183,7 @@ export async function saveExpenseIndividualAction(formData: FormData) {
       .eq("id", expenseId)
 
     if (error) {
-      throw error
+      throw new Error(expenseDatabaseErrorMessage(error))
     }
 
     revalidateExpensePaths(expenseId)
@@ -142,7 +197,7 @@ export async function saveExpenseIndividualAction(formData: FormData) {
     .single()
 
   if (error) {
-    throw error
+    throw new Error(expenseDatabaseErrorMessage(error))
   }
 
   const created = data as { id: string }

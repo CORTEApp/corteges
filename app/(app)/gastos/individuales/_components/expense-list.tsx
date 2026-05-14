@@ -296,7 +296,7 @@ function DocumentBadge({ expense }: { expense: ExpenseIndividualListItem }) {
   }
 
   if (expense.legacy_has_attachment) {
-    return <Badge tone="warning">Historico</Badge>
+    return <Badge tone="warning">Pendiente</Badge>
   }
 
   return <Badge tone="neutral">Sin doc.</Badge>

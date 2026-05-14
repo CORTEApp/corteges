@@ -11,7 +11,7 @@ import { ConfirmSubmitButton } from "@/components/ui/confirm-submit-button"
 import { FormSection } from "@/components/ui/form-section"
 import { FormSectionTabPanel } from "@/components/ui/form-section-tabs"
 import { FormLoadingOverlay } from "@/components/ui/form-loading-overlay"
-import { FormSubmitButton } from "@/components/ui/form-submit-button"
+import { FormPendingScreen } from "@/components/ui/form-pending-screen"
 import { APP_ROLE_LABELS, APP_ROLES } from "@/lib/users/roles"
 import { loadManagedUser } from "@/lib/users/management"
 
@@ -72,6 +72,7 @@ export default async function EditarUsuarioPage({
   }
 
   const currentRoles = new Set(user.roles)
+  const rolesFormId = `user-roles-form-${user.id}`
 
   return (
     <ResourceEditScreen
@@ -108,8 +109,15 @@ export default async function EditarUsuarioPage({
           <FormSection
             description="Selecciona los permisos internos activos para este usuario."
             title="Roles"
+            action={
+              <Button type="submit" form={rolesFormId}>
+                <ShieldCheck className="size-4" aria-hidden="true" />
+                Actualizar roles
+              </Button>
+            }
           >
-            <form action={updateManagedUserRoles.bind(null, user.id)} className="relative space-y-4">
+            <form id={rolesFormId} action={updateManagedUserRoles.bind(null, user.id)} className="relative space-y-4">
+              <FormPendingScreen label="Actualizando roles..." />
               <FormLoadingOverlay label="Actualizando roles..." />
               <div className="grid gap-2 md:grid-cols-3">
                 {APP_ROLES.map((role) => (
@@ -119,7 +127,6 @@ export default async function EditarUsuarioPage({
                   </label>
                 ))}
               </div>
-              <FormSubmitButton pendingLabel="Actualizando roles...">Actualizar roles</FormSubmitButton>
             </form>
           </FormSection>
         </FormSectionTabPanel>

@@ -4,7 +4,7 @@ import { ArrowLeft, CalendarDays, ReceiptText, Save } from "lucide-react"
 
 import { ExpenseDocumentSection } from "@/app/(app)/gastos/individuales/_components/expense-document-section"
 import { ExpenseIndividualForm } from "@/app/(app)/gastos/individuales/_components/expense-form"
-import { ExpenseTraceReadOnly } from "@/app/(app)/gastos/individuales/_components/expense-readonly-sections"
+import { ExpenseAdminReadOnly } from "@/app/(app)/gastos/individuales/_components/expense-readonly-sections"
 import { ResourceEditScreen } from "@/components/resource-screens"
 import { Button } from "@/components/ui/button"
 import {
@@ -60,16 +60,16 @@ export default async function EditExpenseIndividualPage({
     >
       <div className="grid gap-6">
         <ExpenseIndividualForm
+          formId={`expense-individual-edit-form-${expense.id}`}
           expense={expense}
           suppliers={suppliers}
-          cancelHref={`/gastos/individuales/${expense.id}`}
         />
         <ExpenseDocumentSection
           expenseId={expense.id}
           documents={documents}
           legacyHasAttachment={expense.legacy_has_attachment}
         />
-        <ExpenseTraceReadOnly expense={expense} />
+        <ExpenseAdminReadOnly expense={expense} />
       </div>
     </ResourceEditScreen>
   )

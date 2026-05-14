@@ -1,13 +1,10 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
-import { ArrowLeft, Database, FileText, ReceiptText, Save } from "lucide-react"
+import { ArrowLeft, ReceiptText, Save } from "lucide-react"
 
 import { FacturableForm } from "@/app/(app)/facturacion/facturables/_components/facturable-form"
-import { FacturableTraceReadOnly } from "@/app/(app)/facturacion/facturables/_components/facturable-readonly-sections"
-import { ResourceContentTabs } from "@/components/resource-content-tabs"
 import { ResourceEditScreen } from "@/components/resource-screens"
 import { Button } from "@/components/ui/button"
-import { FormSectionTabPanel } from "@/components/ui/form-section-tabs"
 import { facturableStateLabel, facturableStateTone, formatAmount } from "@/lib/billing/format"
 import { getFacturableDetail, listFacturableCodes } from "@/lib/billing/data"
 
@@ -54,29 +51,14 @@ export default async function EditFacturablePage({
         },
         { label: "Precio actual", value: formatAmount(facturable.unit_price) },
         { label: "Guardado", value: "Catálogo", icon: <Save className="size-4" aria-hidden="true" /> },
-        { label: "Origen", value: facturable.sharepoint_item_id ? "SharePoint" : "Manual", icon: <Database className="size-4" aria-hidden="true" /> },
       ]}
       contentClassName="max-w-5xl"
     >
-      <ResourceContentTabs
-        defaultTab="datos"
-        tabs={[
-          { id: "datos", label: "Datos", icon: <FileText className="size-4" aria-hidden="true" /> },
-          { id: "trazabilidad", label: "Trazabilidad", icon: <Database className="size-4" aria-hidden="true" /> },
-        ]}
-      >
-        <FormSectionTabPanel tabId="datos">
-          <FacturableForm
-            facturable={facturable}
-            existingCodes={existingCodes}
-            cancelHref={`/facturacion/facturables/${facturable.id}`}
-          />
-        </FormSectionTabPanel>
-
-        <FormSectionTabPanel tabId="trazabilidad">
-          <FacturableTraceReadOnly facturable={facturable} />
-        </FormSectionTabPanel>
-      </ResourceContentTabs>
+      <FacturableForm
+        facturable={facturable}
+        existingCodes={existingCodes}
+        formId={`facturable-edit-form-${facturable.id}`}
+      />
     </ResourceEditScreen>
   )
 }

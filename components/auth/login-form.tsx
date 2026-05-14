@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { FullScreenLoading } from '@/components/ui/full-screen-loading'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
@@ -30,9 +31,9 @@ export function LoginForm({
       email,
       password,
     })
-    setLoading(false)
 
     if (error) {
+      setLoading(false)
       toast.error(error.message)
       return
     }
@@ -65,53 +66,60 @@ export function LoginForm({
   }
 
   return (
-    <div className="mx-auto flex min-h-[calc(100vh-5rem)] w-full max-w-md items-center justify-center">
-      <Card className="w-full">
-        <CardHeader className="space-y-1">
-          <CardTitle>Entrar</CardTitle>
-          <CardDescription>Introduce tu email y contraseña.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form className="space-y-4" onSubmit={handlePasswordLogin}>
-          <div className="grid gap-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="tu@email.com"
-              required
-            />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="password">Contraseña</Label>
-            <Input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Contraseña"
-              required
-            />
-          </div>
-          <Button type="submit" disabled={loading} className="w-full">
-            {loading ? 'Entrando...' : 'Entrar'}
-          </Button>
-          </form>
-          <div className="mt-4 border-t border-border pt-4">
-            <Button
-              type="button"
-              variant="ghost"
-              className="w-full justify-center"
-              disabled={recoveryLoading || loading}
-              onClick={handleRecoveryRequest}
-            >
-              {recoveryLoading ? 'Enviando...' : 'He olvidado mi contraseña'}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+    <>
+      <FullScreenLoading
+        active={loading || recoveryLoading}
+        description={loading ? 'Validando credenciales y permisos.' : 'Solicitando enlace seguro.'}
+        label={loading ? 'Entrando...' : 'Enviando recuperacion...'}
+      />
+      <div className="mx-auto flex min-h-[calc(100vh-5rem)] w-full max-w-md items-center justify-center">
+        <Card className="w-full">
+          <CardHeader className="space-y-1">
+            <CardTitle>Entrar</CardTitle>
+            <CardDescription>Introduce tu email y contraseña.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form className="space-y-4" onSubmit={handlePasswordLogin}>
+              <div className="grid gap-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="tu@email.com"
+                  required
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="password">Contraseña</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Contraseña"
+                  required
+                />
+              </div>
+              <Button type="submit" disabled={loading} className="w-full">
+                {loading ? 'Entrando...' : 'Entrar'}
+              </Button>
+            </form>
+            <div className="mt-4 border-t border-border pt-4">
+              <Button
+                type="button"
+                variant="ghost"
+                className="w-full justify-center"
+                disabled={recoveryLoading || loading}
+                onClick={handleRecoveryRequest}
+              >
+                {recoveryLoading ? 'Enviando...' : 'He olvidado mi contraseña'}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </>
   )
 }

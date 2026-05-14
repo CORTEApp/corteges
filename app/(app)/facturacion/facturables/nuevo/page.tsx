@@ -1,10 +1,12 @@
 import Link from "next/link"
-import { ArrowLeft, PackagePlus, ReceiptText } from "lucide-react"
+import { ArrowLeft, PackagePlus, ReceiptText, Save } from "lucide-react"
 
 import { FacturableForm } from "@/app/(app)/facturacion/facturables/_components/facturable-form"
 import { ResourceEditScreen } from "@/components/resource-screens"
 import { Button } from "@/components/ui/button"
 import { listFacturableCodes, requireBillingUser } from "@/lib/billing/data"
+
+const FACTURABLE_FORM_ID = "facturable-create-form"
 
 export default async function NewFacturablePage() {
   await requireBillingUser(undefined, "/facturacion/facturables/nuevo")
@@ -17,12 +19,18 @@ export default async function NewFacturablePage() {
         title: "Nuevo facturable",
         subtitle: "Alta de un concepto de catálogo con precio base y estado operativo.",
         actions: (
-          <Button asChild variant="outline">
-            <Link href="/facturacion/facturables">
-              <ArrowLeft aria-hidden="true" />
-              Volver al listado
-            </Link>
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button asChild variant="outline">
+              <Link href="/facturacion/facturables">
+                <ArrowLeft aria-hidden="true" />
+                Volver al listado
+              </Link>
+            </Button>
+            <Button type="submit" form={FACTURABLE_FORM_ID}>
+              <Save aria-hidden="true" />
+              Guardar facturable
+            </Button>
+          </div>
         ),
       }}
       metrics={[
@@ -33,7 +41,7 @@ export default async function NewFacturablePage() {
       ]}
       contentClassName="max-w-5xl"
     >
-      <FacturableForm existingCodes={existingCodes} />
+      <FacturableForm actionsPlacement="page" existingCodes={existingCodes} formId={FACTURABLE_FORM_ID} />
     </ResourceEditScreen>
   )
 }

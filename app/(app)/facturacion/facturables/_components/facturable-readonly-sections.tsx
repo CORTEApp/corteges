@@ -65,22 +65,3 @@ export function FacturableFichaReadOnly({ facturable }: { facturable: BillingFac
     </div>
   )
 }
-
-export function FacturableTraceReadOnly({ facturable }: { facturable: BillingFacturable }) {
-  return (
-    <div className="grid gap-6">
-      <FormSection
-        title="Trazabilidad"
-        description="Referencia al origen SharePoint cuando el registro viene del catálogo importado."
-      >
-        <DetailFieldGrid>
-          <DetailField label="SharePoint list" value={facturable.sharepoint_list_id ?? "-"} />
-          <DetailField label="SharePoint item" value={facturable.sharepoint_item_id ?? "-"} />
-          <DetailField label="Importado" value={facturable.imported_at ? new Date(facturable.imported_at).toLocaleString("es-ES") : "-"} />
-          <DetailField label="Creado" value={new Date(facturable.created_at).toLocaleString("es-ES")} />
-          <DetailField label="Actualizado" value={new Date(facturable.updated_at).toLocaleString("es-ES")} />
-        </DetailFieldGrid>
-      </FormSection>
-    </div>
-  )
-}

@@ -11,3 +11,10 @@
 - microsoft_mail_settings: `global_module_outboxes_ready`
 - microsoft_mail_modules: `billing_crm`
 - fiscal_statistics: `estadisticas_facturacion_csv_ready_remote_verified`
+- expense_individual_deduplication: `supplier_invoice_unique_remote_verified`
+- expense_invoice_intake_duplicates: `hash_and_supplier_invoice_review_ready`
+- expense_invoice_intake_recognition: `stripe_international_v2_remote_reprocessed`
+- supplier_auto_approval: `remote_applied_default_off_confirm_historical_extracted`
+- full_screen_loading: `atlas_delay_300ms_routes_and_blocking_actions`
+- form_header_actions: `persistent_forms_save_back_in_headers`
+- technical_origin_ui: `sharepoint_hidden_from_product_surface`

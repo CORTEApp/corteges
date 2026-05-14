@@ -1,22 +1,17 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
-import { ArrowLeft, CalendarDays, Database, FileText, Pencil, ReceiptText, UserRound } from "lucide-react"
+import { ArrowLeft, CalendarDays, FileText, Pencil, ReceiptText, Settings2, UserRound } from "lucide-react"
 
 import { ExpenseDocumentSection } from "@/app/(app)/gastos/individuales/_components/expense-document-section"
 import {
+  ExpenseAdminReadOnly,
   ExpenseFichaReadOnly,
-  ExpenseTraceReadOnly,
 } from "@/app/(app)/gastos/individuales/_components/expense-readonly-sections"
 import { ResourceContentTabs } from "@/components/resource-content-tabs"
 import { ResourceDetailScreen } from "@/components/resource-screens"
 import { Button } from "@/components/ui/button"
 import { FormSectionTabPanel } from "@/components/ui/form-section-tabs"
-import {
-  expenseOriginLabel,
-  expensePaymentMethodLabels,
-  formatExpenseAmountCompact,
-  formatExpenseDate,
-} from "@/lib/expenses/format"
+import { expensePaymentMethodLabels, formatExpenseAmountCompact, formatExpenseDate } from "@/lib/expenses/format"
 import { getExpenseIndividualDetail } from "@/lib/expenses/data"
 
 export default async function ExpenseIndividualDetailPage({
@@ -60,7 +55,6 @@ export default async function ExpenseIndividualDetailPage({
         { label: "Total", value: formatExpenseAmountCompact(expense.total_amount), tone: "success" },
         { label: "Pago", value: expensePaymentMethodLabels[expense.payment_method] },
         { label: "Fecha", value: formatExpenseDate(expense.expense_date), icon: <CalendarDays className="size-4" aria-hidden="true" /> },
-        { label: "Origen", value: expenseOriginLabel(expense), icon: <Database className="size-4" aria-hidden="true" /> },
       ]}
     >
       <ResourceContentTabs
@@ -68,7 +62,7 @@ export default async function ExpenseIndividualDetailPage({
         tabs={[
           { id: "ficha", label: "Ficha", icon: <UserRound className="size-4" aria-hidden="true" /> },
           { id: "documentos", label: "Documentos", icon: <FileText className="size-4" aria-hidden="true" /> },
-          { id: "origen", label: "Origen", icon: <Database className="size-4" aria-hidden="true" /> },
+          { id: "administracion", label: "Administracion", icon: <Settings2 className="size-4" aria-hidden="true" /> },
         ]}
       >
         <FormSectionTabPanel tabId="ficha">
@@ -84,8 +78,8 @@ export default async function ExpenseIndividualDetailPage({
           />
         </FormSectionTabPanel>
 
-        <FormSectionTabPanel tabId="origen">
-          <ExpenseTraceReadOnly expense={expense} />
+        <FormSectionTabPanel tabId="administracion">
+          <ExpenseAdminReadOnly expense={expense} />
         </FormSectionTabPanel>
       </ResourceContentTabs>
     </ResourceDetailScreen>

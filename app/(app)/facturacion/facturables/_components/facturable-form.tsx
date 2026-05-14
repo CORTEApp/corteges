@@ -1,10 +1,9 @@
-import Link from "next/link"
-import type { HTMLAttributes } from "react"
+import type { HTMLAttributes, ReactNode } from "react"
 import { Save } from "lucide-react"
 
 import { saveFacturableAction } from "@/app/(app)/facturacion/facturables/actions"
 import { FacturableCodeField } from "@/app/(app)/facturacion/facturables/_components/facturable-code-field"
-import { Button } from "@/components/ui/button"
+import { FormPendingScreen } from "@/components/ui/form-pending-screen"
 import { FormSubmitButton } from "@/components/ui/form-submit-button"
 import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
@@ -17,20 +16,34 @@ const sectionClassName =
 export function FacturableForm({
   facturable,
   existingCodes = [],
-  cancelHref = "/facturacion/facturables",
+  formId = "facturable-form",
+  actionsPlacement = "section",
 }: {
   facturable?: BillingFacturable
   existingCodes?: string[]
-  cancelHref?: string
+  formId?: string
+  actionsPlacement?: "page" | "section"
 }) {
+  const pendingLabel = "Guardando..."
+  const sectionAction = actionsPlacement === "section"
+    ? (
+        <FormSubmitButton fullscreenPending={false} pendingLabel={pendingLabel}>
+          <Save aria-hidden="true" />
+          Guardar facturable
+        </FormSubmitButton>
+      )
+    : null
+
   return (
-    <form action={saveFacturableAction} className="grid gap-8">
+    <form id={formId} action={saveFacturableAction} className="grid gap-8">
+      <FormPendingScreen label={pendingLabel} />
       {facturable ? <input type="hidden" name="facturable_id" value={facturable.id} /> : null}
 
       <section className={sectionClassName}>
         <SectionTitle
           title="Concepto"
           note="Identifica el producto, licencia, servicio o descuento que puede entrar en presupuestos o facturación futura."
+          action={sectionAction}
         />
         <div className="mt-5 grid gap-4 md:grid-cols-6">
           <FacturableCodeField
@@ -117,15 +130,6 @@ export function FacturableForm({
         </div>
       </section>
 
-      <div className="flex items-center justify-between gap-3 rounded-[var(--radius-shell)] border border-border/80 bg-[color:var(--surface-1)] px-5 py-4 shadow-[0_18px_40px_-28px_rgba(15,23,42,0.24)]">
-        <Button asChild variant="outline">
-          <Link href={cancelHref}>Volver</Link>
-        </Button>
-        <FormSubmitButton pendingLabel="Guardando...">
-          <Save aria-hidden="true" />
-          Guardar facturable
-        </FormSubmitButton>
-      </div>
     </form>
   )
 }
@@ -162,13 +166,14 @@ function Field({
   )
 }
 
-function SectionTitle({ title, note }: { title: string; note?: string }) {
+function SectionTitle({ title, note, action }: { title: string; note?: string; action?: ReactNode }) {
   return (
     <div className="flex items-end justify-between gap-4 border-b border-border/70 pb-3">
       <div>
         <h2 className="text-base font-semibold tracking-tight text-foreground">{title}</h2>
         {note ? <p className="mt-1 text-sm leading-5 text-muted-foreground">{note}</p> : null}
       </div>
+      {action ? <div className="shrink-0">{action}</div> : null}
     </div>
   )
 }

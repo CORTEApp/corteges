@@ -8,11 +8,15 @@ begin
     raise exception 'Missing public.expense_individual_documents';
   end if;
 
+  if to_regclass('public.expense_individual_duplicate_archive') is null then
+    raise exception 'Missing public.expense_individual_duplicate_archive';
+  end if;
+
   if exists (
     select 1
     from information_schema.columns
     where table_schema = 'public'
-      and table_name in ('expense_individuals', 'expense_individual_documents')
+      and table_name in ('expense_individuals', 'expense_individual_documents', 'expense_individual_duplicate_archive')
       and column_name = 'company_id'
   ) then
     raise exception 'Expense individuals must not use company_id';
@@ -22,7 +26,7 @@ begin
     select 1
     from information_schema.role_table_grants
     where table_schema = 'public'
-      and table_name in ('expense_individuals', 'expense_individual_documents')
+      and table_name in ('expense_individuals', 'expense_individual_documents', 'expense_individual_duplicate_archive')
       and grantee = 'anon'
   ) then
     raise exception 'anon must not have grants on expense individual tables';
@@ -61,11 +65,23 @@ begin
     raise exception 'RLS disabled on expense_individual_documents';
   end if;
 
+  if not exists (
+    select 1
+    from pg_class c
+    join pg_namespace n on n.oid = c.relnamespace
+    where n.nspname = 'public'
+      and c.relname = 'expense_individual_duplicate_archive'
+      and c.relrowsecurity
+      and c.relforcerowsecurity
+  ) then
+    raise exception 'Forced RLS disabled on expense_individual_duplicate_archive';
+  end if;
+
   if exists (
     select 1
     from pg_policies
     where schemaname in ('public', 'storage')
-      and tablename in ('expense_individuals', 'expense_individual_documents', 'objects')
+      and tablename in ('expense_individuals', 'expense_individual_documents', 'expense_individual_duplicate_archive', 'objects')
       and policyname like 'expense%'
       and 'anon' = any(roles)
   ) then
@@ -79,6 +95,26 @@ begin
       and contype = 'u'
   ) then
     raise exception 'Missing SharePoint uniqueness constraint';
+  end if;
+
+  if not exists (
+    select 1
+    from pg_indexes
+    where schemaname = 'public'
+      and tablename = 'expense_individuals'
+      and indexname = 'idx_expense_individuals_supplier_invoice_unique'
+  ) then
+    raise exception 'Missing supplier invoice uniqueness guard';
+  end if;
+
+  if exists (
+    select 1
+    from public.expense_individuals
+    where btrim(invoice_number) <> ''
+    group by supplier_id, upper(btrim(invoice_number))
+    having count(*) > 1
+  ) then
+    raise exception 'Duplicate expense invoice detected';
   end if;
 
   if not exists (

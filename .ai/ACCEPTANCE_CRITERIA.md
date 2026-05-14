@@ -47,14 +47,14 @@
 - Emitir factura crea un documento fiscal `F-YYYY/n`, copia las lineas y enlaza `source_proforma_id`.
 - La emision fiscal es transaccional en Postgres y no permite doble factura desde la misma proforma.
 - `/facturacion/facturas` y `/facturacion/facturas/[id]` muestran la serie fiscal y la referencia a proforma.
-- `/facturacion/facturas/[id]` muestra adjuntos historicos recuperados y descarga mediante `/facturacion/facturas/[id]/documentos/[documentId]`.
+- `/facturacion/facturas/[id]` muestra adjuntos y PDFs generados sin exponer origen tecnico y descarga mediante `/facturacion/facturas/[id]/documentos/[documentId]`.
 - `tools/sharepoint_import_billing_documents.mjs --dry-run` confirma 135 items de `Facturas` y 264 de `Trabajos`; la linea historica `F-2024/7` queda detectada sin cabecera importada.
 - `supabase/queries/billing_documents_verification.sql` valida RLS, grants, RPCs y guardas de doble factura.
 
 ## Facturacion / Suscripciones
 - `/facturacion/suscripciones` muestra por defecto suscripciones activas hoy, con busqueda y filtro por activas, futuras, finalizadas o todas.
 - `/facturacion/suscripciones/nuevo`, `/facturacion/suscripciones/[id]` y `/facturacion/suscripciones/[id]/edit` siguen flujo listado -> ficha -> edicion.
-- La ficha muestra snapshot de cliente, CIF, correo, codigo, descripcion, vigencia, cantidad, total recurrente y trazabilidad SharePoint.
+- La ficha muestra snapshot de cliente, CIF, correo, codigo, descripcion, vigencia, cantidad, total recurrente y administracion de baja sin exponer origen tecnico.
 - Finalizar una suscripcion fija `end_date`; no borra fisicamente ni concede `DELETE` a `authenticated`.
 - `tools/sharepoint_import_subscriptions.mjs --dry-run` confirma 10 items de `Suscripciones`.
 - `supabase/queries/billing_subscriptions_verification.sql` valida RLS, grants, unicidad SharePoint y ausencia de tenants/deletes.
@@ -63,11 +63,11 @@
 ## Proveedores
 - `/proveedores` muestra listado operativo con busqueda y filtros por activo y pago; por defecto muestra activos.
 - `/proveedores/nuevo`, `/proveedores/[id]` y `/proveedores/[id]/edit` siguen flujo listado -> ficha -> edicion.
-- La ficha muestra tabs `Ficha` y `Origen`, con contacto, referencias SEPA/Stripe, comentarios y trazabilidad SharePoint.
+- La ficha muestra tabs `Ficha` y `Administracion`, con contacto, referencias SEPA/Stripe, comentarios y eliminacion confirmada sin exponer origen tecnico.
 - La seccion de navegacion `Gastos` contiene `Proveedores` como primer item.
 - `suppliers.tax_id` es unico en el sistema.
 - Usuarios autenticados pueden operar el modulo; usuarios sin sesion no acceden.
-- La eliminacion requiere confirmacion y borra solo la fila local, sin escribir de vuelta en SharePoint.
+- La eliminacion requiere confirmacion y borra solo la fila local.
 - `tools/sharepoint_import_suppliers.mjs --dry-run` confirma 23 items de `Proveedores`, con 22 activos y 1 inactivo.
 - `tools/sharepoint_import_suppliers.mjs` importa 21 proveedores unicos por `tax_id`; los duplicados de SharePoint se resuelven priorizando activo y fecha de modificacion mas reciente.
 - `supabase/queries/suppliers_verification.sql` valida RLS, unicidad fiscal, permisos base y ausencia de tenants.
@@ -75,13 +75,13 @@
 ## Gastos / Individuales
 - `/gastos/individuales` muestra listado operativo con busqueda y filtros por proveedor, pago, año y mes; por defecto muestra el año actual.
 - `/gastos/individuales/nuevo`, `/gastos/individuales/[id]` y `/gastos/individuales/[id]/edit` siguen flujo listado -> ficha -> edicion.
-- La ficha muestra tabs `Ficha`, `Documentos` y `Origen`, con proveedor obligatorio, factura, fecha, importes, observaciones y trazabilidad SharePoint.
+- La ficha muestra tabs `Ficha`, `Documentos` y `Administracion`, con proveedor obligatorio, factura, fecha, importes, observaciones y eliminacion confirmada sin exponer origen tecnico.
 - La seccion de navegacion `Gastos` contiene `Individuales` y `Proveedores`.
 - `expense_individuals.supplier_id` es obligatorio y restringe el borrado de proveedores con gastos asociados.
 - `expense_individual_documents` usa bucket privado `expense-documents`.
 - La ficha/edicion de gasto permite subida manual multiple y borrado confirmado de documentos.
 - Usuarios autenticados pueden operar el modulo; usuarios sin sesion no acceden.
-- La eliminacion requiere confirmacion y borra solo la fila local y sus documentos locales, sin escribir de vuelta en SharePoint.
+- La eliminacion requiere confirmacion y borra solo la fila local y sus documentos locales.
 - `tools/sharepoint_import_expense_individuals.mjs --dry-run` confirma 171 items de `Gastos`, 171 enlaces a proveedor, 168 `N26`, 3 `Caixa`, 119 IVA `0`, 52 IVA `21`, 16 sin `Precio` y 54 descuadres historicos preservados.
 - `supabase/queries/expense_individuals_verification.sql` valida RLS, grants, bucket privado, FK obligatoria a proveedores, unicidad SharePoint y ausencia de tenants.
 
@@ -90,7 +90,7 @@
 - `/crm/oportunidades` muestra tablero pipeline con tabs `Abiertas` y `Cerradas`.
 - El listado permite filtrar por busqueda, estado, owner, origen, proximos contactos y abiertas/cerradas.
 - `/crm/oportunidades/nuevo`, `/crm/oportunidades/[id]` y `/crm/oportunidades/[id]/edit` siguen flujo listado -> ficha -> edicion.
-- La ficha muestra tabs `Ficha`, `Contactos` y `Origen`, permite registrar contactos manuales y cerrar la oportunidad sin borrado fisico.
+- La ficha muestra tabs `Gestion`, `Ficha` y `Contactos`, permite registrar contactos manuales y cerrar la oportunidad sin borrado fisico.
 - El tab `Gestion` muestra agenda mixta, estado de conexion Microsoft y creacion de reuniones Teams.
 - `/integraciones/microsoft/connect` y `/integraciones/microsoft/callback` conectan Microsoft Graph delegado por usuario.
 - Las reuniones Teams se crean como eventos de calendario del usuario conectado y quedan registradas en `crm_opportunity_meetings` y en el historico como `meeting_online`.

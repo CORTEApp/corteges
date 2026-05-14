@@ -48,25 +48,12 @@ export function SubscriptionFichaReadOnly({ subscription }: { subscription: Bill
   )
 }
 
-export function SubscriptionTraceReadOnly({ subscription }: { subscription: BillingSubscription }) {
+export function SubscriptionAdminReadOnly({ subscription }: { subscription: BillingSubscription }) {
   const status = subscriptionStatusValue(subscription)
   const isFinished = status === "history"
 
   return (
     <div className="grid gap-6">
-      <FormSection
-        title="Trazabilidad"
-        description="Referencia al origen SharePoint cuando el registro procede de la lista Suscripciones."
-      >
-        <DetailFieldGrid>
-          <DetailField label="SharePoint list" value={subscription.sharepoint_list_id ?? "-"} />
-          <DetailField label="SharePoint item" value={subscription.sharepoint_item_id ?? "-"} />
-          <DetailField label="Importado" value={subscription.imported_at ? new Date(subscription.imported_at).toLocaleString("es-ES") : "-"} />
-          <DetailField label="Creado" value={new Date(subscription.created_at).toLocaleString("es-ES")} />
-          <DetailField label="Actualizado" value={new Date(subscription.updated_at).toLocaleString("es-ES")} />
-        </DetailFieldGrid>
-      </FormSection>
-
       <FormSection
         title="Administracion"
         description="La baja se guarda con fecha fin; no se elimina la suscripcion ni su historico."
@@ -76,7 +63,7 @@ export function SubscriptionTraceReadOnly({ subscription }: { subscription: Bill
           <div>
             <div className="text-sm font-semibold text-foreground">Finalizar suscripcion</div>
             <p className="mt-1 text-xs leading-5 text-muted-foreground">
-              El registro seguira disponible en el filtro de finalizadas y mantendra su trazabilidad.
+              El registro seguira disponible en el filtro de finalizadas.
             </p>
           </div>
           <label className="grid gap-2">

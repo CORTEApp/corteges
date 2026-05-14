@@ -1,10 +1,10 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
-import { ArrowLeft, CalendarClock, Database, FileText, Pencil, RefreshCw } from "lucide-react"
+import { ArrowLeft, CalendarClock, FileText, Pencil, RefreshCw, Settings2 } from "lucide-react"
 
 import {
+  SubscriptionAdminReadOnly,
   SubscriptionFichaReadOnly,
-  SubscriptionTraceReadOnly,
 } from "@/app/(app)/facturacion/suscripciones/_components/subscription-readonly-sections"
 import { ResourceContentTabs } from "@/components/resource-content-tabs"
 import { ResourceDetailScreen } from "@/components/resource-screens"
@@ -65,22 +65,21 @@ export default async function SubscriptionDetailPage({
         },
         { label: "Inicio", value: formatDate(subscription.start_date), icon: <CalendarClock className="size-4" aria-hidden="true" /> },
         { label: "Total", value: `${formatAmount(subscription.recurring_total_amount)} €` },
-        { label: "Origen", value: subscription.sharepoint_item_id ? "SharePoint" : "Manual", icon: <Database className="size-4" aria-hidden="true" /> },
       ]}
     >
       <ResourceContentTabs
         defaultTab="ficha"
         tabs={[
           { id: "ficha", label: "Ficha", icon: <FileText className="size-4" aria-hidden="true" /> },
-          { id: "trazabilidad", label: "Trazabilidad", icon: <Database className="size-4" aria-hidden="true" /> },
+          { id: "administracion", label: "Administracion", icon: <Settings2 className="size-4" aria-hidden="true" /> },
         ]}
       >
         <FormSectionTabPanel tabId="ficha">
           <SubscriptionFichaReadOnly subscription={subscription} />
         </FormSectionTabPanel>
 
-        <FormSectionTabPanel tabId="trazabilidad">
-          <SubscriptionTraceReadOnly subscription={subscription} />
+        <FormSectionTabPanel tabId="administracion">
+          <SubscriptionAdminReadOnly subscription={subscription} />
         </FormSectionTabPanel>
       </ResourceContentTabs>
     </ResourceDetailScreen>

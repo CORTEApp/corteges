@@ -66,16 +66,19 @@ begin
     select 1
     from pg_indexes
     where schemaname = 'public'
+      and indexname = 'idx_expense_invoice_intake_items_supplier_invoice_open'
+      and indexdef like '%extraida%'
+      and indexdef like '%aprobada%'
+  ) then
+    raise exception 'Missing review-safe supplier invoice uniqueness guard';
+  end if;
+
+  if not exists (
+    select 1
+    from pg_indexes
+    where schemaname = 'public'
       and indexname = 'idx_expense_invoice_supplier_templates_supplier_active'
   ) then
     raise exception 'Missing active supplier template uniqueness guard';
   end if;
 end $$;
-
-select
-  'expense_invoice_intake_verification' as check_name,
-  count(*) filter (where tablename like 'expense_invoice_%') as tables_with_rls
-from pg_tables
-where schemaname = 'public'
-  and rowsecurity is true;
-

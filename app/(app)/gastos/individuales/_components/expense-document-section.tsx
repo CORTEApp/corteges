@@ -6,7 +6,7 @@ import {
   uploadExpenseIndividualDocumentAction,
 } from "@/app/(app)/gastos/individuales/actions"
 import { SectionTitle } from "@/app/(app)/clientes/_components/form-controls"
-import { Button } from "@/components/ui/button"
+import { FormSubmitButton } from "@/components/ui/form-submit-button"
 import { formatExpenseDate, formatExpenseFileSize } from "@/lib/expenses/format"
 import type { ExpenseIndividualDocument } from "@/lib/expenses/types"
 
@@ -22,7 +22,7 @@ export function ExpenseDocumentSection({
   mode?: "read" | "manage"
 }) {
   const canManage = mode === "manage"
-  const recoveredSharePointDocuments = documents.filter((document) => document.source_kind === "sharepoint").length
+  const recoveredDocuments = documents.filter((document) => document.source_kind === "sharepoint").length
 
   return (
     <section
@@ -36,9 +36,9 @@ export function ExpenseDocumentSection({
 
       {legacyHasAttachment ? (
         <div className="mt-5 rounded-[var(--radius-panel)] border border-amber-200/80 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900">
-          {recoveredSharePointDocuments > 0
-            ? `SharePoint indicaba adjuntos historicos y ya hay ${recoveredSharePointDocuments} recuperado${recoveredSharePointDocuments === 1 ? "" : "s"} en Supabase.`
-            : "SharePoint indicaba adjuntos historicos para este gasto. Aun no hay binario recuperado en Supabase."}
+          {recoveredDocuments > 0
+            ? `Hay ${recoveredDocuments} archivo${recoveredDocuments === 1 ? "" : "s"} disponible${recoveredDocuments === 1 ? "" : "s"} para este gasto.`
+            : "Este gasto tiene adjuntos pendientes de estar disponibles en la app."}
         </div>
       ) : null}
 
@@ -58,10 +58,10 @@ export function ExpenseDocumentSection({
               className="rounded-[var(--radius-panel)] border border-input/85 bg-[color:var(--surface-1)] px-3 py-2 text-sm text-foreground"
             />
           </label>
-          <Button type="submit" className="self-end">
+          <FormSubmitButton className="self-end" pendingLabel="Subiendo factura...">
             <FileUp aria-hidden="true" />
             Subir
-          </Button>
+          </FormSubmitButton>
         </form>
       ) : null}
 
@@ -83,8 +83,7 @@ export function ExpenseDocumentSection({
                     {document.file_name}
                   </Link>
                   <div className="mt-1 text-xs text-muted-foreground">
-                    {document.source_kind === "sharepoint" ? "Origen SharePoint" : "Subido a CORTE.Ges"}
-                    {document.source_sha256 ? ` · ${document.source_sha256.slice(0, 12)}` : ""}
+                    {document.source_kind === "sharepoint" ? "Archivo disponible" : "Subido a CORTE.Ges"}
                   </div>
                 </div>
                 <div className="text-sm text-muted-foreground">{formatExpenseFileSize(document.file_size)}</div>
@@ -97,10 +96,10 @@ export function ExpenseDocumentSection({
                     <form action={deleteExpenseIndividualDocumentAction} className="mt-2 grid gap-2 rounded-[var(--radius-panel)] border border-destructive/25 bg-destructive/5 p-2">
                       <input type="hidden" name="expense_id" value={expenseId} />
                       <input type="hidden" name="document_id" value={document.id} />
-                      <Button type="submit" variant="ghost" size="sm">
+                      <FormSubmitButton pendingLabel="Borrando..." variant="ghost" size="sm">
                         <Trash2 aria-hidden="true" />
                         Confirmar
-                      </Button>
+                      </FormSubmitButton>
                     </form>
                   </details>
                 ) : null}

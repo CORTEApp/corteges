@@ -1,9 +1,8 @@
-import Link from "next/link"
 import { Save } from "lucide-react"
 
 import { saveOpportunityAction } from "@/app/(app)/crm/oportunidades/actions"
 import { SectionTitle } from "@/app/(app)/clientes/_components/form-controls"
-import { Button } from "@/components/ui/button"
+import { FormPendingScreen } from "@/components/ui/form-pending-screen"
 import { FormSubmitButton } from "@/components/ui/form-submit-button"
 import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
@@ -30,19 +29,33 @@ function numberValue(value: number | null | undefined) {
 
 export function OpportunityForm({
   opportunity,
-  cancelHref = "/crm/oportunidades",
+  formId = "opportunity-form",
+  actionsPlacement = "section",
 }: {
   opportunity?: CRMOpportunityRecord
-  cancelHref?: string
+  formId?: string
+  actionsPlacement?: "page" | "section"
 }) {
+  const pendingLabel = "Guardando..."
+  const sectionAction = actionsPlacement === "section"
+    ? (
+        <FormSubmitButton fullscreenPending={false} pendingLabel={pendingLabel}>
+          <Save aria-hidden="true" />
+          Guardar oportunidad
+        </FormSubmitButton>
+      )
+    : null
+
   return (
-    <form action={saveOpportunityAction} className="grid gap-8">
+    <form id={formId} action={saveOpportunityAction} className="grid gap-8">
+      <FormPendingScreen label={pendingLabel} />
       {opportunity ? <input type="hidden" name="opportunity_id" value={opportunity.id} /> : null}
 
       <section className={sectionClassName}>
         <SectionTitle
           title="Identidad"
           note="Empresa, persona de contacto y trazas comerciales basicas."
+          action={sectionAction}
         />
         <div className="mt-5 grid gap-4 md:grid-cols-6">
           <label className="grid gap-2 md:col-span-3">
@@ -206,15 +219,6 @@ export function OpportunityForm({
         </div>
       </section>
 
-      <div className="flex items-center justify-between gap-3 rounded-[var(--radius-shell)] border border-border/80 bg-[color:var(--surface-1)] px-5 py-4 shadow-[0_18px_40px_-28px_rgba(15,23,42,0.24)]">
-        <Button asChild variant="outline">
-          <Link href={cancelHref}>Volver</Link>
-        </Button>
-        <FormSubmitButton pendingLabel="Guardando...">
-          <Save aria-hidden="true" />
-          Guardar oportunidad
-        </FormSubmitButton>
-      </div>
     </form>
   )
 }
