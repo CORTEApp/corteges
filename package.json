@@ -30,7 +30,8 @@
     "sharepoint:billing-pdfs:download": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/sharepoint_download_binaries.ps1 -OutDir .sharepoint-export -AuthMode DeviceLogin -Force -ListId 918d3f77-aa39-4e86-8b1a-831aef7ad68c -Extensions .pdf",
     "sharepoint:billing-pdfs:upload:dry-run": "node tools/sharepoint_upload_binaries.mjs --export-dir .sharepoint-export --local-dir .sharepoint-export/binaries --list-id 918d3f77-aa39-4e86-8b1a-831aef7ad68c --extensions .pdf --dry-run",
     "sharepoint:billing-pdfs:upload": "node tools/sharepoint_upload_binaries.mjs --export-dir .sharepoint-export --local-dir .sharepoint-export/binaries --list-id 918d3f77-aa39-4e86-8b1a-831aef7ad68c --extensions .pdf --continue-on-error",
-    "sharepoint:billing-pdfs:all": "npm run sharepoint:billing-pdfs:download && npm run sharepoint:billing-pdfs:upload:dry-run && npm run sharepoint:billing-pdfs:upload"
+    "sharepoint:billing-pdfs:all": "npm run sharepoint:billing-pdfs:download && npm run sharepoint:billing-pdfs:upload:dry-run && npm run sharepoint:billing-pdfs:upload",
+    "cron:monthly-invoices": "node scripts/run-monthly-invoices-cron.mjs"
   },
   "dependencies": {
     "@sparticuz/chromium": "^148.0.0",
@@ -39,14 +40,14 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.511.0",
-    "next": "16.1.6",
+    "next": "16.2.6",
     "next-themes": "^0.4.6",
     "pdf-parse": "^1.1.1",
     "playwright": "^1.60.0",
     "playwright-core": "^1.60.0",
     "radix-ui": "^1.4.3",
-    "react": "19.2.3",
-    "react-dom": "19.2.3",
+    "react": "19.2.6",
+    "react-dom": "19.2.6",
     "sonner": "^1.7.4",
     "tailwind-merge": "^2.5.4"
   },
@@ -57,9 +58,12 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.1.6",
+    "eslint-config-next": "16.2.6",
     "sharp": "^0.34.5",
     "tailwindcss": "^4",
     "typescript": "^5"
+  },
+  "overrides": {
+    "postcss": "8.5.15"
   }
 }
