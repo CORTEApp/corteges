@@ -136,3 +136,4 @@
 
 1. La fuente de verdad operativa de Coolify queda documentada en `docs/ops/coolify.md`; los secretos no se versionan.
 2. La credencial master canonica es la declarada en env (`user_master` / `user_master_password`); Coolify ejecuta `npm run auth:master` como post-deploy para evitar drift con Supabase Auth.
+3. `billing_subscriptions.recurring_total_amount` representa el importe recurrente final; la base imponible y el IVA se derivan al generar candidatos de aprobacion.

@@ -2,6 +2,7 @@ import "server-only"
 
 import { createAdminClient } from "@/lib/supabase/admin"
 import { enqueueBillingDocumentEmail, sendQueuedBillingEmail } from "@/lib/mail/billing"
+import { calculateApprovalLineAmounts } from "@/lib/billing/approval-amounts.mjs"
 import { toNumber } from "@/lib/billing/format"
 import type {
   BillingFacturableUnit,
@@ -117,18 +118,6 @@ function clientGroupKey(subscription: BillingSubscription) {
 
 function roundMoney(value: number) {
   return Math.round((value + Number.EPSILON) * 100) / 100
-}
-
-function roundUnit(value: number) {
-  return Math.round((value + Number.EPSILON) * 10000) / 10000
-}
-
-function clampVatRate(value: number) {
-  if (!Number.isFinite(value)) {
-    return 0
-  }
-
-  return Math.min(100, Math.max(0, value))
 }
 
 function truncateError(error: unknown) {
@@ -272,12 +261,19 @@ function buildCandidateLines(
   unitByFacturableId: Map<string, BillingFacturableUnit>,
 ) {
   return subscriptions.map((subscription, index) => {
-    const quantity = Math.max(toNumber(subscription.quantity), 0.0001)
-    const subtotalAmount = roundMoney(toNumber(subscription.recurring_total_amount))
-    const vatRate = subscription.apply_vat ? clampVatRate(toNumber(subscription.vat_rate ?? 21)) : 0
-    const taxAmount = roundMoney(subtotalAmount * (vatRate / 100))
-    const totalAmount = roundMoney(subtotalAmount + taxAmount)
-    const unitPrice = roundUnit(subtotalAmount / quantity)
+    const {
+      quantity,
+      unitPrice,
+      vatRate,
+      subtotalAmount,
+      taxAmount,
+      totalAmount,
+    } = calculateApprovalLineAmounts({
+      recurringTotalAmount: subscription.recurring_total_amount,
+      quantity: subscription.quantity,
+      applyVat: subscription.apply_vat,
+      vatRate: subscription.vat_rate,
+    })
 
     return {
       subscription_id: subscription.id,

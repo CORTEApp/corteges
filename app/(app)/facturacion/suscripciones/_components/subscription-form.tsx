@@ -48,10 +48,12 @@ export function SubscriptionForm({
   const initialClient = clients.find((client) => client.id === subscription?.client_id) ?? clients[0]
   const initialFacturable = facturables.find((facturable) => facturable.id === subscription?.facturable_id) ?? facturables[0]
   const initialQuantity = numberFieldValue(subscription?.quantity, 1)
+  const initialApplyVat = subscription?.apply_vat ?? true
+  const initialVatRate = numberFieldValue(subscription?.vat_rate, 21)
+  const initialBaseAmount = roundTotal(toNumber(initialFacturable?.unit_price) * toNumber(initialQuantity))
   const initialTotal =
     subscription?.recurring_total_amount ??
-    roundTotal(toNumber(initialFacturable?.unit_price) * toNumber(initialQuantity))
-  const initialApplyVat = subscription?.apply_vat ?? true
+    roundTotal(initialBaseAmount * (1 + (initialApplyVat ? toNumber(initialVatRate) : 0) / 100))
   const [clientId, setClientId] = useState(subscription?.client_id ?? initialClient?.id ?? "")
   const [facturableId, setFacturableId] = useState(subscription?.facturable_id ?? initialFacturable?.id ?? "")
   const [email, setEmail] = useState(subscription?.billing_email ?? initialClient?.billing_email ?? "")
@@ -59,14 +61,19 @@ export function SubscriptionForm({
   const [quantity, setQuantity] = useState(initialQuantity)
   const [total, setTotal] = useState(numberFieldValue(initialTotal, 0))
   const [applyVat, setApplyVat] = useState(initialApplyVat)
-  const [vatRate, setVatRate] = useState(numberFieldValue(subscription?.vat_rate, 21))
+  const [vatRate, setVatRate] = useState(initialVatRate)
   const [totalTouched, setTotalTouched] = useState(Boolean(subscription))
 
   const clientById = useMemo(() => new Map(clients.map((client) => [client.id, client])), [clients])
   const facturableById = useMemo(() => new Map(facturables.map((facturable) => [facturable.id, facturable])), [facturables])
   const selectedFacturable = facturableById.get(facturableId)
-  const calculatedTotal = roundTotal(toNumber(selectedFacturable?.unit_price) * toNumber(quantity))
-  const taxPreview = applyVat ? roundTotal(toNumber(total) * (toNumber(vatRate) / 100)) : 0
+  const effectiveVatRate = applyVat ? toNumber(vatRate) : 0
+  const calculatedBase = roundTotal(toNumber(selectedFacturable?.unit_price) * toNumber(quantity))
+  const calculatedTotal = roundTotal(calculatedBase * (1 + effectiveVatRate / 100))
+  const totalValue = totalTouched ? total : String(calculatedTotal)
+  const recurringTotal = toNumber(totalValue)
+  const estimatedBase = effectiveVatRate > 0 ? roundTotal(recurringTotal / (1 + effectiveVatRate / 100)) : recurringTotal
+  const includedVat = roundTotal(recurringTotal - estimatedBase)
   const pendingLabel = "Guardando..."
   const sectionAction = actionsPlacement === "section"
     ? (
@@ -127,10 +134,8 @@ export function SubscriptionForm({
               value={facturableId}
               onChange={(event) => {
                 const nextFacturable = facturableById.get(event.target.value)
-                const nextTotal = roundTotal(toNumber(nextFacturable?.unit_price) * toNumber(quantity))
                 setFacturableId(event.target.value)
                 setDescription(nextFacturable?.description ?? "")
-                setTotal(String(nextTotal))
                 setTotalTouched(false)
               }}
               required
@@ -153,9 +158,6 @@ export function SubscriptionForm({
               onChange={(event) => {
                 const nextQuantity = event.target.value
                 setQuantity(nextQuantity)
-                if (!totalTouched) {
-                  setTotal(String(roundTotal(toNumber(selectedFacturable?.unit_price) * toNumber(nextQuantity))))
-                }
               }}
               required
             />
@@ -179,7 +181,7 @@ export function SubscriptionForm({
       <section className={sectionClassName}>
         <SectionTitle
           title="Vigencia e importe"
-          note="La fecha fin vacia mantiene la suscripcion activa; finalizarla fijara esa fecha sin borrar el registro."
+          note="El total recurrente se guarda como importe final; si aplica IVA, la base se deriva al generar factura."
         />
         <div className="mt-5 grid gap-4 md:grid-cols-6">
           <label className="grid gap-2 md:col-span-2">
@@ -198,7 +200,7 @@ export function SubscriptionForm({
               min="0"
               step="0.0001"
               inputMode="decimal"
-              value={total}
+              value={totalValue}
               onChange={(event) => {
                 setTotal(event.target.value)
                 setTotalTouched(true)
@@ -243,10 +245,10 @@ export function SubscriptionForm({
 
         <div className="mt-5 grid gap-3 rounded-[var(--radius-panel)] border border-primary/15 bg-primary/8 p-4 md:grid-cols-2 xl:grid-cols-5">
           <TotalPill label="Precio base" value={toNumber(selectedFacturable?.unit_price)} />
-          <TotalPill label="Calculado" value={calculatedTotal} />
-          <TotalPill label="Base guardada" value={toNumber(total)} />
-          <TotalPill label="IVA estimado" value={taxPreview} />
-          <TotalPill label="Total con IVA" value={toNumber(total) + taxPreview} strong />
+          <TotalPill label="Base calculada" value={calculatedBase} />
+          <TotalPill label="Base estimada" value={estimatedBase} />
+          <TotalPill label="IVA incluido" value={includedVat} />
+          <TotalPill label="Total recurrente" value={recurringTotal} strong />
         </div>
       </section>
 

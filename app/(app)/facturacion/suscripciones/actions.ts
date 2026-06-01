@@ -124,16 +124,17 @@ export async function saveSubscriptionAction(formData: FormData) {
     throw new Error("La fecha fin no puede ser anterior al inicio.")
   }
 
-  const fallbackTotal = roundMoney(toNumber(facturable.unit_price) * quantity)
-  const recurringTotal = numberValue(formData, "recurring_total_amount", fallbackTotal)
-  if (recurringTotal < 0) {
-    throw new Error("El total recurrente no puede ser negativo.")
-  }
-
   const applyVat = formData.get("apply_vat") === "on"
   const vatRate = applyVat ? numberValue(formData, "vat_rate", 21) : 0
   if (vatRate < 0 || vatRate > 100) {
     throw new Error("El porcentaje de IVA debe estar entre 0 y 100.")
+  }
+
+  const fallbackBase = roundMoney(toNumber(facturable.unit_price) * quantity)
+  const fallbackTotal = applyVat ? roundMoney(fallbackBase * (1 + vatRate / 100)) : fallbackBase
+  const recurringTotal = numberValue(formData, "recurring_total_amount", fallbackTotal)
+  if (recurringTotal < 0) {
+    throw new Error("El total recurrente no puede ser negativo.")
   }
 
   const payload = {

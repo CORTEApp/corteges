@@ -110,6 +110,20 @@ do $$
 begin
   if exists (
     select 1
+    from public.billing_invoice_approval_candidates c
+    join public.billing_invoice_approval_lines l on l.candidate_id = c.id
+    join public.billing_subscriptions s on s.id = l.subscription_id
+    where c.status in ('pending', 'failed')
+      and round(l.total_amount, 2) <> round(s.recurring_total_amount, 2)
+  ) then
+    raise exception 'Pending approval line totals must match subscription recurring totals';
+  end if;
+end $$;
+
+do $$
+begin
+  if exists (
+    select 1
     from public.billing_invoice_approval_candidates
     where status = 'sent'
       and (invoice_id is null or mail_job_id is null)

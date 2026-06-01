@@ -5,6 +5,7 @@ import path from 'node:path'
 
 const ROOT = process.cwd()
 const DEFAULT_LIST_ID = '0e2a61bb-f831-4b7a-a007-092e49a3c59d'
+const DEFAULT_VAT_RATE = 21
 
 function parseArgs(argv) {
   const args = {}
@@ -168,6 +169,8 @@ function mapSubscriptionItem(item, { listId, siteId, clientsByTaxId, facturables
   const client = clientsByTaxId.get(normalizeKey(taxId))
   const facturable = facturablesByCode.get(normalizeKey(subscriptionCode))
   const quantity = parseNumber(values.Cantidad, 1)
+  const fallbackBaseAmount = Number(facturable?.unit_price ?? 0) * quantity
+  const fallbackTotalAmount = Number((fallbackBaseAmount * (1 + DEFAULT_VAT_RATE / 100)).toFixed(4))
 
   return {
     client_id: client?.id ?? null,
@@ -180,7 +183,7 @@ function mapSubscriptionItem(item, { listId, siteId, clientsByTaxId, facturables
     start_date: parseDate(values.FechaInicio) ?? new Date().toISOString().slice(0, 10),
     end_date: parseDate(values.FechaFin),
     quantity,
-    recurring_total_amount: parseNumber(values.PrecioTotal, Number((Number(facturable?.unit_price ?? 0) * quantity).toFixed(4))),
+    recurring_total_amount: parseNumber(values.PrecioTotal, fallbackTotalAmount),
     currency: 'EUR',
     sharepoint_site_id: siteId,
     sharepoint_list_id: listId,
