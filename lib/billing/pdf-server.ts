@@ -12,6 +12,8 @@ import {
 } from "@/lib/billing/pdf-template-html.mjs"
 
 const BILLING_DOCUMENTS_BUCKET = "billing-documents"
+const PLAYWRIGHT_BROWSER_PATH = "0"
+const PLAYWRIGHT_CHROMIUM_ARGS = ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"]
 
 type BrowserInstance = {
   close: () => Promise<void>
@@ -69,19 +71,11 @@ function contentDisposition(filename: string) {
 }
 
 async function launchChromiumBrowser(): Promise<BrowserInstance> {
-  if (process.env.VERCEL || process.env.NODE_ENV === "production") {
+  if (process.env.VERCEL) {
     return launchBundledChromiumBrowser()
   }
 
-  try {
-    return await launchLocalChromiumBrowser()
-  } catch (error) {
-    if (isMissingPlaywrightBrowserError(error)) {
-      return launchBundledChromiumBrowser()
-    }
-
-    throw error
-  }
+  return launchLocalChromiumBrowser()
 }
 
 async function launchBundledChromiumBrowser(): Promise<BrowserInstance> {
@@ -98,14 +92,15 @@ async function launchBundledChromiumBrowser(): Promise<BrowserInstance> {
 }
 
 async function launchLocalChromiumBrowser(): Promise<BrowserInstance> {
+  if (process.env.NODE_ENV === "production" && !process.env.PLAYWRIGHT_BROWSERS_PATH) {
+    process.env.PLAYWRIGHT_BROWSERS_PATH = PLAYWRIGHT_BROWSER_PATH
+  }
+
   const { chromium } = await import("playwright")
-  return chromium.launch({ headless: true }) as Promise<BrowserInstance>
-}
-
-function isMissingPlaywrightBrowserError(error: unknown) {
-  const message = error instanceof Error ? error.message : String(error)
-
-  return message.includes("Executable doesn't exist") || message.includes("playwright install")
+  return chromium.launch({
+    args: PLAYWRIGHT_CHROMIUM_ARGS,
+    headless: true,
+  }) as Promise<BrowserInstance>
 }
 
 async function renderPdfFromTemplateUrl(request: Request) {
