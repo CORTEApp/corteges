@@ -22,6 +22,7 @@ Este runbook es la fuente de verdad operativa para conectar con Coolify y operar
   - `.env` en la raiz del workspace
 - Esas env locales contienen nombres como `user_master`, `user_master_password`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY` y `SUPABASE_SERVICE_ROLE_KEY`. No documentar sus valores.
 - En servidor, Coolify guarda las variables cifradas en su configuracion interna. El `.env` materializado de la app vive en `/data/coolify/applications/x6k0as1xsjbt5lclqz77casu/.env`.
+- La fuente de verdad de la credencial master es `user_master` / `user_master_password` en env. Supabase Auth debe resincronizarse con `npm run auth:master`; no cambiar la password master a mano y asumir que queda persistida como canon.
 
 ## Regla critica de env vars
 
@@ -33,6 +34,7 @@ Este runbook es la fuente de verdad operativa para conectar con Coolify y operar
 ## Deploy y verificacion
 
 - El push a `main` en `CORTEApp/corteges` dispara despliegue Coolify.
+- La app Coolify debe conservar el post-deployment command `npm run auth:master` y `post_deployment_command_container` vacio. Este paso reescribe en Supabase Auth la credencial master declarada en env y evita drift entre despliegues.
 - Verificar cola de despliegue en servidor con una consulta de solo lectura a `application_deployment_queues`.
 - Verificar contenedor activo con Docker: debe existir un contenedor cuyo nombre empiece por `x6k0as1xsjbt5lclqz77casu-`, imagen `x6k0as1xsjbt5lclqz77casu:<commit>` y estado `healthy`.
 - No dar el deploy por bueno hasta que el commit activo del contenedor coincida con `origin/main`.
@@ -43,11 +45,13 @@ Comandos seguros de inspeccion:
 ssh -i ~/.ssh/corteapp_deploy_ed25519 deploy@coolify.corteapp.es
 sudo docker ps --filter name=x6k0as1xsjbt5lclqz77casu --format '{{.Names}}\t{{.Image}}\t{{.Status}}'
 sudo docker exec coolify-db sh -lc 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -P pager=off -c "select id, deployment_uuid, status, commit, created_at, finished_at from application_deployment_queues where application_id = 2::text order by created_at desc limit 5;"'
+sudo docker exec coolify-db sh -lc 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -P pager=off -c "select post_deployment_command, post_deployment_command_container from applications where id = 2;"'
 ```
 
 ## Smoke minimo
 
 - `https://ges.corteapp.es/auth/login` responde `200`.
+- Login real con `user_master` / `user_master_password` responde `200` contra Supabase Auth. Comprobar sin imprimir email, password, tokens ni refresh tokens.
 - Assets de marca responden `200`:
   - `https://ges.corteapp.es/brand/corteges/logo-full.svg`
   - `https://ges.corteapp.es/brand/corteges/watermark.png`
@@ -58,5 +62,6 @@ sudo docker exec coolify-db sh -lc 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -
 ## Incidentes conocidos
 
 - Si Coolify muestra `The payload is invalid` al abrir la app `corteges`, revisar filas corruptas/no cifradas en `environment_variables` antes de desplegar.
+- Si el login master devuelve `invalid_credentials` pero las env locales y de Coolify coinciden, hay drift en Supabase Auth: ejecutar `npm run auth:master` desde el repo o desde el contenedor activo, verificar login y confirmar que Coolify conserva el post-deploy `npm run auth:master`.
 - Si Nixpacks falla instalando `libasound2`, usar `libasound2t64` en `nixpacks.toml`.
 - Para PDFs con Playwright en Coolify, `PLAYWRIGHT_BROWSERS_PATH` debe mantenerse en `0` y los assets deben resolverse por URL publica o ruta servida por la app.
