@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto"
+import { existsSync } from "node:fs"
 import { mkdtemp, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
@@ -16,22 +17,30 @@ import {
 
 const BILLING_DOCUMENTS_BUCKET = "billing-documents"
 const PLAYWRIGHT_BROWSER_PATH = "0"
-const PLAYWRIGHT_CHROMIUM_ARGS = ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"]
+const PLAYWRIGHT_CHROMIUM_ARGS = [
+  "--no-sandbox",
+  "--disable-setuid-sandbox",
+  "--disable-dev-shm-usage",
+  "--disable-gpu",
+  "--no-zygote",
+]
 
 type PdfBrowserSession = {
   addCookies: (cookies: Array<{ name: string; value: string; url: string }>) => Promise<void>
   close: () => Promise<void>
-  newPage: () => Promise<{
-    goto: (url: string, options: { waitUntil: "networkidle" }) => Promise<unknown>
-    pdf: (options: {
-      format: "A4"
-      margin: { top: string; right: string; bottom: string; left: string }
-      preferCSSPageSize: boolean
-      printBackground: boolean
-    }) => Promise<Buffer | Uint8Array>
-    setContent: (html: string, options: { waitUntil: "networkidle" }) => Promise<void>
-    url: () => string
-  }>
+  newPage: () => Promise<PdfPage>
+}
+
+type PdfPage = {
+  goto: (url: string, options: { waitUntil: "networkidle" }) => Promise<unknown>
+  pdf: (options: {
+    format: "A4"
+    margin: { top: string; right: string; bottom: string; left: string }
+    preferCSSPageSize: boolean
+    printBackground: boolean
+  }) => Promise<Buffer | Uint8Array>
+  setContent: (html: string, options: { waitUntil: "networkidle" }) => Promise<void>
+  url: () => string
 }
 
 function templateUrlForRequest(request: Request) {
@@ -70,19 +79,62 @@ function contentDisposition(filename: string) {
   return `attachment; filename="${fallback}"; filename*=UTF-8''${encodeURIComponent(filename)}`
 }
 
-async function createPdfBrowserSession(): Promise<PdfBrowserSession> {
-  if (process.env.NODE_ENV === "production" && !process.env.PLAYWRIGHT_BROWSERS_PATH) {
+function configurePlaywrightBrowserPath() {
+  if (process.env.NODE_ENV === "production") {
     process.env.PLAYWRIGHT_BROWSERS_PATH = PLAYWRIGHT_BROWSER_PATH
   }
+}
 
+function explicitChromiumExecutablePath() {
+  const candidate =
+    process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH ||
+    process.env.CHROME_BIN ||
+    process.env.CHROMIUM_PATH ||
+    null
+
+  if (!candidate) {
+    return null
+  }
+
+  const normalized = candidate.replace(/\\/g, "/")
+  if (
+    normalized === "/tmp/chromium" &&
+    process.env.BILLING_PDF_ALLOW_TMP_CHROMIUM !== "1"
+  ) {
+    console.warn("[billing-pdf] ignoring unstable /tmp/chromium executable; using bundled Playwright browser")
+    return null
+  }
+
+  if (!existsSync(candidate)) {
+    console.warn("[billing-pdf] configured chromium executable does not exist; using bundled Playwright browser", {
+      executablePath: candidate,
+    })
+    return null
+  }
+
+  return candidate
+}
+
+function browserLaunchOptions(executablePath: string) {
+  return {
+    args: PLAYWRIGHT_CHROMIUM_ARGS,
+    executablePath,
+    headless: true,
+  }
+}
+
+async function createPersistentPdfBrowserSession(): Promise<PdfBrowserSession> {
   const { chromium } = await import("playwright")
   const userDataDir = await mkdtemp(join(tmpdir(), "corteges-pdf-"))
+  const executablePath = explicitChromiumExecutablePath() ?? chromium.executablePath()
+
+  console.info("[billing-pdf] launching chromium", {
+    executablePath,
+    playwrightBrowsersPath: process.env.PLAYWRIGHT_BROWSERS_PATH ?? null,
+  })
 
   try {
-    const context = await chromium.launchPersistentContext(userDataDir, {
-      args: PLAYWRIGHT_CHROMIUM_ARGS,
-      headless: true,
-    })
+    const context = await chromium.launchPersistentContext(userDataDir, browserLaunchOptions(executablePath))
 
     return {
       addCookies: (cookies) => context.addCookies(cookies),
@@ -98,6 +150,36 @@ async function createPdfBrowserSession(): Promise<PdfBrowserSession> {
   } catch (error) {
     await rm(userDataDir, { recursive: true, force: true })
     throw error
+  }
+}
+
+async function createEphemeralPdfBrowserSession(): Promise<PdfBrowserSession> {
+  const { chromium } = await import("playwright")
+  const executablePath = explicitChromiumExecutablePath() ?? chromium.executablePath()
+  const browser = await chromium.launch(browserLaunchOptions(executablePath))
+  const context = await browser.newContext()
+
+  return {
+    addCookies: (cookies) => context.addCookies(cookies),
+    close: async () => {
+      try {
+        await context.close()
+      } finally {
+        await browser.close()
+      }
+    },
+    newPage: () => context.newPage(),
+  }
+}
+
+async function createPdfBrowserSession(): Promise<PdfBrowserSession> {
+  configurePlaywrightBrowserPath()
+
+  try {
+    return await createPersistentPdfBrowserSession()
+  } catch (error) {
+    console.error("[billing-pdf] persistent chromium launch failed; retrying with ephemeral context", error)
+    return createEphemeralPdfBrowserSession()
   }
 }
 
