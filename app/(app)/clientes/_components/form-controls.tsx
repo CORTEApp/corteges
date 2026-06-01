@@ -10,6 +10,7 @@ type FieldProps = {
   defaultValue?: string | number | null
   placeholder?: string
   type?: string
+  inputMode?: "email" | "search" | "text" | "tel" | "url" | "none" | "numeric" | "decimal"
   required?: boolean
   className?: string
 }
@@ -20,6 +21,7 @@ export function Field({
   defaultValue,
   placeholder,
   type = "text",
+  inputMode,
   required = false,
   className,
 }: FieldProps) {
@@ -29,6 +31,7 @@ export function Field({
       <Input
         name={name}
         type={type}
+        inputMode={inputMode}
         required={required}
         defaultValue={defaultValue ?? ""}
         placeholder={placeholder}

@@ -118,12 +118,13 @@ export function SubscriptionForm({
             <span className="text-sm font-medium text-foreground">Correo de facturacion</span>
             <Input
               name="billing_email"
-              type="email"
+              type="text"
+              inputMode="email"
               value={email}
               onChange={(event) => {
                 setEmail(event.target.value)
               }}
-              placeholder="facturacion@cliente.es"
+              placeholder="facturacion@cliente.es; admon@cliente.es"
               data-filled={email ? "true" : "false"}
             />
           </label>

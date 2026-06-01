@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin"
 import { sendMicrosoftMailForUser, type MicrosoftMailAttachment } from "@/lib/microsoft/graph"
 import type { BillingDocument, BillingDocumentFile } from "@/lib/billing/types"
+import { mailRecipientList, splitMailRecipients } from "@/lib/mail/recipients.mjs"
 import { getModuleOutbox, listMailOutboxes } from "@/lib/mail/settings"
 import type { MailDispatchJob, MailOutbox } from "@/lib/mail/types"
 
@@ -26,13 +27,6 @@ function escapeHtml(value: unknown) {
 function truncateError(error: unknown) {
   const message = error instanceof Error ? error.message : safeText(error || "No se pudo enviar el email.")
   return message.slice(0, 1200)
-}
-
-function recipientList(values: string[] | null | undefined) {
-  return (values ?? [])
-    .map((email) => email.trim())
-    .filter(Boolean)
-    .map((email) => ({ email }))
 }
 
 function billingSubject(document: BillingDocument) {
@@ -173,7 +167,8 @@ export async function enqueueBillingDocumentEmail(
   }
 
   const outbox = resolvedOutbox
-  if (!document.billing_email?.trim()) {
+  const recipients = splitMailRecipients([document.billing_email])
+  if (!recipients.length) {
     throw new Error("El documento no tiene correo de cobro.")
   }
 
@@ -198,7 +193,7 @@ export async function enqueueBillingDocumentEmail(
       billing_document_id: document.id,
       outbox_id: outbox.id,
       idempotency_key: idempotencyKey,
-      recipient_to: [document.billing_email.trim()],
+      recipient_to: recipients,
       subject: billingSubject(document),
       body_html: billingBodyHtml(document),
       attachment_file_ids: [generatedPdf.id],
@@ -298,9 +293,9 @@ export async function sendQueuedBillingEmail(jobId: string) {
       mailboxEmail: outbox.mode === "shared_mailbox" ? outbox.email_address : null,
       subject: job.subject,
       bodyHtml: job.body_html,
-      to: recipientList(job.recipient_to),
-      cc: recipientList(job.recipient_cc),
-      bcc: recipientList(job.recipient_bcc),
+      to: mailRecipientList(job.recipient_to),
+      cc: mailRecipientList(job.recipient_cc),
+      bcc: mailRecipientList(job.recipient_bcc),
       attachments,
       saveToSentItems: true,
     })

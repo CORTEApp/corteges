@@ -9,6 +9,7 @@
     "start": "next start",
     "lint": "eslint",
     "test:billing-approval": "node tools/test_billing_approval_amounts.mjs",
+    "test:mail-recipients": "node tools/test_mail_recipients.mjs",
     "test:invoice-intake": "node tools/test_invoice_intake_extraction.mjs",
     "audit:ui-system": "python tools/ui_system_audit.py --root . --report MERGE_AUDIT_REPORT.md",
     "audit:billing-pdf": "node tools/audit_billing_pdf.mjs",

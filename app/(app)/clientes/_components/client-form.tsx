@@ -102,7 +102,14 @@ export function ClientForm({
           <Field label="Nombre de contacto" name="contact_name" defaultValue={client?.contact_name} />
           <Field label="Teléfono" name="contact_phone" defaultValue={client?.contact_phone} />
           <Field label="Correo de contacto" name="contact_email" type="email" defaultValue={client?.contact_email} />
-          <Field label="Correo de cobro" name="billing_email" type="email" defaultValue={client?.billing_email} />
+          <Field
+            label="Correo de cobro"
+            name="billing_email"
+            type="text"
+            inputMode="email"
+            defaultValue={client?.billing_email}
+            placeholder="cobros@cliente.es; admon@cliente.es"
+          />
         </div>
       </section>
 
