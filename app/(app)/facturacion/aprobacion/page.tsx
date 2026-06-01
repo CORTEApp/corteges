@@ -41,6 +41,9 @@ import {
 import type { BillingInvoiceApprovalCandidateDetail } from "@/lib/billing/types"
 import { requireAdminAccess } from "@/lib/users/server"
 
+export const runtime = "nodejs"
+export const maxDuration = 60
+
 function firstParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value
 }

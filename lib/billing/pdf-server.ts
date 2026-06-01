@@ -1,4 +1,7 @@
 import { createHash } from "node:crypto"
+import { mkdtemp, rm } from "node:fs/promises"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
 
 import { createAdminClient } from "@/lib/supabase/admin"
 import {
@@ -29,6 +32,22 @@ type BrowserInstance = {
       setContent: (html: string, options: { waitUntil: "networkidle" }) => Promise<void>
       url: () => string
     }>
+  }>
+}
+
+type PdfBrowserSession = {
+  addCookies: (cookies: Array<{ name: string; value: string; url: string }>) => Promise<void>
+  close: () => Promise<void>
+  newPage: () => Promise<{
+    goto: (url: string, options: { waitUntil: "networkidle" }) => Promise<unknown>
+    pdf: (options: {
+      format: "A4"
+      margin: { top: string; right: string; bottom: string; left: string }
+      preferCSSPageSize: boolean
+      printBackground: boolean
+    }) => Promise<Buffer | Uint8Array>
+    setContent: (html: string, options: { waitUntil: "networkidle" }) => Promise<void>
+    url: () => string
   }>
 }
 
@@ -68,36 +87,71 @@ function contentDisposition(filename: string) {
   return `attachment; filename="${fallback}"; filename*=UTF-8''${encodeURIComponent(filename)}`
 }
 
-async function launchChromiumBrowser(): Promise<BrowserInstance> {
+async function launchLocalChromiumBrowser(): Promise<BrowserInstance> {
+  const { chromium } = await import("playwright")
+  return chromium.launch({ headless: true }) as Promise<BrowserInstance>
+}
+
+async function createPdfBrowserSession(): Promise<PdfBrowserSession> {
   if (process.env.VERCEL) {
     const chromiumModule = await import("@sparticuz/chromium")
     const { chromium: playwright } = await import("playwright-core")
     const chromium = chromiumModule.default
     chromium.setGraphicsMode = false
 
-    return playwright.launch({
-      args: chromium.args,
-      executablePath: await chromium.executablePath(),
-      headless: true,
-    }) as Promise<BrowserInstance>
+    const userDataDir = await mkdtemp(join(tmpdir(), "corteges-pdf-"))
+
+    try {
+      const context = await playwright.launchPersistentContext(userDataDir, {
+        args: chromium.args,
+        executablePath: await chromium.executablePath(),
+        headless: true,
+      })
+
+      return {
+        addCookies: (cookies) => context.addCookies(cookies),
+        close: async () => {
+          try {
+            await context.close()
+          } finally {
+            await rm(userDataDir, { recursive: true, force: true })
+          }
+        },
+        newPage: () => context.newPage(),
+      } as PdfBrowserSession
+    } catch (error) {
+      await rm(userDataDir, { recursive: true, force: true })
+      throw error
+    }
   }
 
-  const { chromium } = await import("playwright")
-  return chromium.launch({ headless: true }) as Promise<BrowserInstance>
+  const browser = await launchLocalChromiumBrowser()
+  const context = await browser.newContext()
+
+  return {
+    addCookies: (cookies) => context.addCookies(cookies),
+    close: async () => {
+      try {
+        await context.close()
+      } finally {
+        await browser.close()
+      }
+    },
+    newPage: () => context.newPage(),
+  }
 }
 
 async function renderPdfFromTemplateUrl(request: Request) {
   const templateUrl = templateUrlForRequest(request)
-  const browser = await launchChromiumBrowser()
+  const session = await createPdfBrowserSession()
 
   try {
-    const context = await browser.newContext()
     const cookies = cookiesForPlaywright(request.headers.get("cookie"), templateUrl.origin)
     if (cookies.length > 0) {
-      await context.addCookies(cookies)
+      await session.addCookies(cookies)
     }
 
-    const page = await context.newPage()
+    const page = await session.newPage()
     await page.goto(templateUrl.toString(), { waitUntil: "networkidle" })
 
     if (new URL(page.url()).pathname.startsWith("/auth/login")) {
@@ -111,19 +165,17 @@ async function renderPdfFromTemplateUrl(request: Request) {
       printBackground: true,
     })
 
-    await context.close()
     return Buffer.from(pdf)
   } finally {
-    await browser.close()
+    await session.close()
   }
 }
 
 async function renderPdfFromHtml(payload: BillingDocumentPrintPayload) {
-  const browser = await launchChromiumBrowser()
+  const session = await createPdfBrowserSession()
 
   try {
-    const context = await browser.newContext()
-    const page = await context.newPage()
+    const page = await session.newPage()
     await page.setContent(
       buildBillingDocumentPrintHtml(payload, {
         fullDocument: true,
@@ -139,10 +191,9 @@ async function renderPdfFromHtml(payload: BillingDocumentPrintPayload) {
       printBackground: true,
     })
 
-    await context.close()
     return Buffer.from(pdf)
   } finally {
-    await browser.close()
+    await session.close()
   }
 }
 
