@@ -1,6 +1,6 @@
 ---
 name: corteapp-supabase-bootstrap
-description: Use when a Next.js + Supabase project is greenfield or missing operational foundations. It owns the full assisted setup lifecycle: project_init, env setup, remote activation, auth SSR wiring, initial schema, bootstrap docs, and readiness verification.
+description: "Use when a Next.js + Supabase project is greenfield or missing operational foundations. It owns the full assisted setup lifecycle: project_init, env setup, remote activation, auth SSR wiring, initial schema, bootstrap docs, and readiness verification."
 ---
 
 # Rol
