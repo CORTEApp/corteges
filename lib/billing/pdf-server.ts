@@ -69,21 +69,43 @@ function contentDisposition(filename: string) {
 }
 
 async function launchChromiumBrowser(): Promise<BrowserInstance> {
-  if (process.env.VERCEL) {
-    const chromiumModule = await import("@sparticuz/chromium")
-    const { chromium: playwright } = await import("playwright-core")
-    const chromium = chromiumModule.default
-    chromium.setGraphicsMode = false
-
-    return playwright.launch({
-      args: chromium.args,
-      executablePath: await chromium.executablePath(),
-      headless: true,
-    }) as Promise<BrowserInstance>
+  if (process.env.VERCEL || process.env.NODE_ENV === "production") {
+    return launchBundledChromiumBrowser()
   }
 
+  try {
+    return await launchLocalChromiumBrowser()
+  } catch (error) {
+    if (isMissingPlaywrightBrowserError(error)) {
+      return launchBundledChromiumBrowser()
+    }
+
+    throw error
+  }
+}
+
+async function launchBundledChromiumBrowser(): Promise<BrowserInstance> {
+  const chromiumModule = await import("@sparticuz/chromium")
+  const { chromium: playwright } = await import("playwright-core")
+  const chromium = chromiumModule.default
+  chromium.setGraphicsMode = false
+
+  return playwright.launch({
+    args: chromium.args,
+    executablePath: await chromium.executablePath(),
+    headless: true,
+  }) as Promise<BrowserInstance>
+}
+
+async function launchLocalChromiumBrowser(): Promise<BrowserInstance> {
   const { chromium } = await import("playwright")
   return chromium.launch({ headless: true }) as Promise<BrowserInstance>
+}
+
+function isMissingPlaywrightBrowserError(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error)
+
+  return message.includes("Executable doesn't exist") || message.includes("playwright install")
 }
 
 async function renderPdfFromTemplateUrl(request: Request) {
