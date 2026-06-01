@@ -1,8 +1,8 @@
 import Link from "next/link"
-import { ArrowLeft, Eye, FileCheck2, FileDown, RefreshCw } from "lucide-react"
+import { ArrowLeft, Eye, FileCheck2, FileDown, RefreshCw, Send } from "lucide-react"
 
 import { BillingDocumentDetailView } from "@/app/(app)/facturacion/_components/billing-document-detail"
-import { regenerateInvoicePdfAction } from "@/app/(app)/facturacion/facturas/actions"
+import { regenerateInvoicePdfAction, resendInvoiceEmailAction } from "@/app/(app)/facturacion/facturas/actions"
 import { ResourceDetailScreen } from "@/components/resource-screens"
 import { Button } from "@/components/ui/button"
 import { FormSubmitButton } from "@/components/ui/form-submit-button"
@@ -48,6 +48,19 @@ export default async function FacturaDetailPage({
               >
                 <RefreshCw aria-hidden="true" />
                 {generatedPdf ? "Regenerar PDF" : "Generar PDF"}
+              </FormSubmitButton>
+            </form>
+            <form action={resendInvoiceEmailAction}>
+              <input type="hidden" name="invoice_id" value={document.id} />
+              <FormSubmitButton
+                disabled={!document.billing_email}
+                pendingLabel="Reenviando..."
+                pendingDescription="Generando el PDF actualizado y enviando la factura por email."
+                title={document.billing_email ? "Reenviar factura" : "La factura no tiene correo de cobro"}
+                variant="outline"
+              >
+                <Send aria-hidden="true" />
+                Reenviar factura
               </FormSubmitButton>
             </form>
             <Button asChild variant="outline">

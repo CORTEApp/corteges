@@ -7,6 +7,7 @@ import type { MailDispatchJob, MailOutbox } from "@/lib/mail/types"
 
 type EnqueueBillingDocumentEmailOptions = {
   createdBy?: string | null
+  idempotencyScope?: string | null
 }
 
 const BILLING_DOCUMENTS_BUCKET = "billing-documents"
@@ -172,7 +173,8 @@ export async function enqueueBillingDocumentEmail(
     throw new Error("El documento no tiene correo de cobro.")
   }
 
-  const idempotencyKey = `billing-document:${document.id}:outbox:${outbox.id}:v1`
+  const idempotencyScope = options.idempotencyScope?.trim() || "v1"
+  const idempotencyKey = `billing-document:${document.id}:outbox:${outbox.id}:${idempotencyScope}`
   const { data: existing, error: existingError } = await supabase
     .from("mail_dispatch_jobs")
     .select("*")

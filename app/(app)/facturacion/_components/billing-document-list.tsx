@@ -1,11 +1,12 @@
 import Link from "next/link"
-import { ArrowRight, FilePlus2, Search } from "lucide-react"
+import { ArrowRight, FilePlus2, Search, WalletCards } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { EmptyState } from "@/components/ui/empty-state"
 import { FilterSidebarCard } from "@/components/ui/filter-sidebar-card"
+import { FormSubmitButton } from "@/components/ui/form-submit-button"
 import { Input } from "@/components/ui/input"
 import { MobileRecordActions, MobileRecordCard, MobileRecordField, MobileRecordGrid } from "@/components/ui/mobile-record-card"
 import { Select } from "@/components/ui/select"
@@ -18,6 +19,8 @@ import {
   formatDate,
 } from "@/lib/billing/format"
 import type { BillingDocumentFilters, BillingDocumentListItem, BillingDocumentType } from "@/lib/billing/types"
+
+type BulkPaidAction = (formData: FormData) => Promise<void>
 
 const statusOptions = [
   ["all", "Todos"],
@@ -41,6 +44,18 @@ function routeBase(documentType: BillingDocumentType) {
 
 function titleFor(documentType: BillingDocumentType) {
   return documentType === "proforma" ? "Proformas" : "Facturas"
+}
+
+function todayISO() {
+  return new Date().toISOString().slice(0, 10)
+}
+
+function canMarkPaid(document: BillingDocumentListItem) {
+  return (
+    document.payment_status !== "paid" &&
+    document.status !== "cancelled" &&
+    document.status !== "discarded"
+  )
 }
 
 export function BillingDocumentFiltersBar({
@@ -103,11 +118,15 @@ export function BillingDocumentFiltersBar({
 export function BillingDocumentsTable({
   documentType,
   documents,
+  markSelectedPaidAction,
 }: {
   documentType: BillingDocumentType
   documents: BillingDocumentListItem[]
+  markSelectedPaidAction?: BulkPaidAction
 }) {
   const base = routeBase(documentType)
+  const supportsBulkPaid = documentType === "invoice" && Boolean(markSelectedPaidAction)
+  const payableDocuments = supportsBulkPaid ? documents.filter(canMarkPaid) : []
 
   if (documents.length === 0) {
     return (
@@ -131,12 +150,35 @@ export function BillingDocumentsTable({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{titleFor(documentType)}</CardTitle>
-        <CardDescription>
-          {documentType === "proforma"
-            ? "Serie comercial P separada de la serie fiscal F."
-            : "Serie fiscal F con referencia a proforma cuando procede."}
-        </CardDescription>
+        <div>
+          <CardTitle>{titleFor(documentType)}</CardTitle>
+          <CardDescription>
+            {documentType === "proforma"
+              ? "Serie comercial P separada de la serie fiscal F."
+              : "Serie fiscal F con referencia a proforma cuando procede."}
+          </CardDescription>
+        </div>
+        {payableDocuments.length > 0 ? (
+          <CardAction className="w-full md:w-auto">
+            <form id="bulk-paid-form" action={markSelectedPaidAction} className="flex flex-wrap justify-start gap-2 md:justify-end">
+              <Input
+                aria-label="Fecha de pago"
+                className="h-10 w-[10.5rem]"
+                defaultValue={todayISO()}
+                name="paid_date"
+                type="date"
+              />
+              <FormSubmitButton
+                pendingLabel="Marcando..."
+                pendingDescription="Marcando como pagadas las facturas seleccionadas."
+                variant="outline"
+              >
+                <WalletCards aria-hidden="true" />
+                Marcar pagadas
+              </FormSubmitButton>
+            </form>
+          </CardAction>
+        ) : null}
       </CardHeader>
 
       <CardContent className="space-y-4">
@@ -156,6 +198,20 @@ export function BillingDocumentsTable({
                 </MobileRecordActions>
               }
             >
+              {supportsBulkPaid ? (
+                <label className="flex items-center gap-2 rounded-[var(--radius-panel)] border border-border/70 bg-[color:var(--surface-2)] px-3 py-2 text-sm text-foreground">
+                  <input
+                    aria-label={`Seleccionar ${document.document_number}`}
+                    className="size-4 accent-[color:var(--primary)] disabled:opacity-40"
+                    disabled={!canMarkPaid(document)}
+                    form="bulk-paid-form"
+                    name="invoice_id"
+                    type="checkbox"
+                    value={document.id}
+                  />
+                  <span>Marcar como pagada</span>
+                </label>
+              ) : null}
               <MobileRecordGrid className="grid-cols-2">
                 <MobileRecordField label="Total" value={`${formatAmount(document.total_amount)} €`} />
                 <MobileRecordField label="Lineas" value={String(document.line_count)} />
@@ -168,6 +224,7 @@ export function BillingDocumentsTable({
           <table className="min-w-full border-collapse text-sm">
             <thead className="bg-muted/30">
               <tr>
+                {supportsBulkPaid ? <th className="w-10 px-4 py-3 text-left font-medium">Pago</th> : null}
                 <th className="px-4 py-3 text-left font-medium">Numero</th>
                 <th className="px-4 py-3 text-left font-medium">Cliente</th>
                 <th className="px-4 py-3 text-left font-medium">Fecha</th>
@@ -181,6 +238,19 @@ export function BillingDocumentsTable({
             <tbody>
               {documents.map((document) => (
                 <tr key={document.id} className="border-t border-border/80">
+                  {supportsBulkPaid ? (
+                    <td className="px-4 py-4 align-top">
+                      <input
+                        aria-label={`Seleccionar ${document.document_number}`}
+                        className="size-4 accent-[color:var(--primary)] disabled:opacity-40"
+                        disabled={!canMarkPaid(document)}
+                        form="bulk-paid-form"
+                        name="invoice_id"
+                        type="checkbox"
+                        value={document.id}
+                      />
+                    </td>
+                  ) : null}
                   <td className="px-4 py-4 align-top">
                     <Link href={`${base}/${document.id}`} className="font-semibold text-foreground no-underline">
                       {document.document_number}
