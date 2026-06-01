@@ -28,7 +28,7 @@ function loadEnvFile(filePath) {
     const parsed = parseDotenvLine(line);
     if (!parsed) continue;
     const [key, value] = parsed;
-    process.env[key] ??= value;
+    process.env[key] = value;
   }
 }
 
