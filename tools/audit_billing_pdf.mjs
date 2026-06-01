@@ -10,6 +10,7 @@ import { chromium } from "playwright"
 import sharp from "sharp"
 
 import {
+  billingDocumentPrintStyles,
   buildBillingDocumentPrintHtml,
   buildBillingDocumentPrintPayload,
 } from "../lib/billing/pdf-template-html.mjs"
@@ -22,6 +23,17 @@ const MAX_MEAN_DELTA = 4
 const MAX_REGION_BOX_DELTA_PX = 3
 const MAX_ACCEPTED_ANTIALIAS_PIXEL_RATIO = 0.04
 const MAX_ACCEPTED_ANTIALIAS_MEAN_DELTA = 4.25
+const MIN_TOTALS_GAP_PX = 1
+const MIN_PAGE_BOTTOM_GAP_PX = 24
+const LAYOUT_FIXTURE_VIEWPORT = { width: 1240, height: 1754 }
+const PLAYWRIGHT_BROWSER_PATH = "0"
+const PLAYWRIGHT_CHROMIUM_ARGS = [
+  "--no-sandbox",
+  "--disable-setuid-sandbox",
+  "--disable-dev-shm-usage",
+  "--disable-gpu",
+  "--no-zygote",
+]
 const REGION_DEFINITIONS = [
   { key: "logo_title", label: "Logo y titulo", kind: "dark", band: { x1: 120, y1: 120, x2: 1110, y2: 320 } },
   { key: "parties", label: "Emisor y cliente", kind: "dark", band: { x1: 120, y1: 300, x2: 1110, y2: 475 } },
@@ -66,6 +78,32 @@ function requireEnv(name) {
 function ensureOutDir() {
   fs.rmSync(OUT_DIR, { recursive: true, force: true })
   fs.mkdirSync(OUT_DIR, { recursive: true })
+}
+
+function configurePlaywrightBrowsersPath() {
+  if (!process.env.PLAYWRIGHT_BROWSERS_PATH) {
+    process.env.PLAYWRIGHT_BROWSERS_PATH = PLAYWRIGHT_BROWSER_PATH
+  }
+}
+
+function localChromiumExecutablePath() {
+  const candidates = [
+    path.join(ROOT, "node_modules/playwright-core/.local-browsers/chromium_headless_shell-1223/chrome-headless-shell-linux64/chrome-headless-shell"),
+    path.join(ROOT, "node_modules/playwright-core/.local-browsers/chromium-1223/chrome-linux64/chrome"),
+  ]
+
+  return candidates.find((candidate) => fs.existsSync(candidate)) ?? null
+}
+
+function launchAuditBrowser() {
+  configurePlaywrightBrowsersPath()
+  const executablePath = localChromiumExecutablePath()
+
+  return chromium.launch({
+    args: PLAYWRIGHT_CHROMIUM_ARGS,
+    ...(executablePath ? { executablePath } : {}),
+    headless: true,
+  })
 }
 
 function run(command, args) {
@@ -162,7 +200,7 @@ async function generatePdf(payload) {
   const assetBaseUrl = pathToFileURL(path.join(ROOT, "public")).href.replace(/\/$/g, "")
   const templateHtml = path.join(OUT_DIR, "template.html")
   fs.writeFileSync(templateHtml, buildBillingDocumentPrintHtml(payload, { fullDocument: true, assetBaseUrl }))
-  const browser = await chromium.launch({ headless: true })
+  const browser = await launchAuditBrowser()
 
   try {
     const page = await browser.newPage()
@@ -183,6 +221,478 @@ async function generatePdf(payload) {
   }
 
   return generatedPdf
+}
+
+function fixtureLine(fixtureKey, index, overrides = {}) {
+  const subtotal = overrides.subtotal ?? 59 * index
+  const tax = Math.round(subtotal * 0.21 * 100) / 100
+
+  return {
+    id: `${fixtureKey}-line-${index}`,
+    document_id: `${fixtureKey}-document`,
+    line_index: index,
+    facturable_id: null,
+    code: overrides.code ?? `S-${String(index).padStart(3, "0")}`,
+    description: overrides.description ?? `Servicio gestionado ${index}`,
+    quantity: overrides.quantity ?? 1,
+    unit_price: subtotal,
+    vat_rate: 21,
+    unit_type: "Unidad",
+    subtotal_amount: subtotal,
+    tax_amount: tax,
+    total_amount: Math.round((subtotal + tax) * 100) / 100,
+    sharepoint_site_id: null,
+    sharepoint_list_id: null,
+    sharepoint_item_id: null,
+    sharepoint_unique_id: null,
+    sharepoint_etag: null,
+    imported_at: null,
+    created_at: "2026-06-01T00:00:00.000Z",
+  }
+}
+
+function buildFixturePayload({
+  key,
+  documentNumber,
+  lineCount,
+  longEmail = false,
+  longDescriptions = false,
+}) {
+  const baseDescriptions = [
+    "Power Automate Premium gestionado",
+    "Mantenimiento avanzado mensual RPA",
+    "Plan Basico",
+    "Acuerdo Colaboracion Automatizacion F2",
+  ]
+  const lines = Array.from({ length: lineCount }, (_, lineIndex) => {
+    const index = lineIndex + 1
+    const description = longDescriptions
+      ? `${baseDescriptions[lineIndex % baseDescriptions.length]} con soporte operativo, seguimiento mensual y coordinacion de incidencias`
+      : baseDescriptions[lineIndex % baseDescriptions.length]
+
+    return fixtureLine(key, index, {
+      code: ["M-001", "S-006", "S-001", "S-008"][lineIndex] ?? `S-${String(index).padStart(3, "0")}`,
+      description,
+      quantity: index === 3 ? 3 : 1,
+      subtotal: [23, 59, 3033, 198]?.[lineIndex] ?? 85 * index,
+    })
+  })
+  const subtotal = Math.round(lines.reduce((total, line) => total + Number(line.subtotal_amount), 0) * 100) / 100
+  const tax = Math.round(lines.reduce((total, line) => total + Number(line.tax_amount), 0) * 100) / 100
+  const total = Math.round((subtotal + tax) * 100) / 100
+  const document = {
+    id: `${key}-document`,
+    document_type: "invoice",
+    status: "issued",
+    payment_status: "unpaid",
+    series: "F",
+    number_year: 2026,
+    number_value: Number(documentNumber.split("/").at(1) ?? 1),
+    document_number: documentNumber,
+    source_proforma_id: null,
+    source_proforma_number: null,
+    client_id: `${key}-client`,
+    client_name: "Edisol Soluciones Energeticas SL",
+    client_tax_id: "B90393547",
+    billing_email: longEmail
+      ? "facturacion.primaria@example.com;administracion.operativa@example.com;direccion.financiera@example.com"
+      : "facturacion@example.com",
+    project: "Licencias",
+    issue_date: "2026-05-01",
+    due_date: "2026-05-01",
+    paid_date: null,
+    payment_method: null,
+    subtotal_amount: subtotal,
+    tax_amount: tax,
+    total_amount: total,
+    currency: "EUR",
+    observations: null,
+    sharepoint_site_id: null,
+    sharepoint_list_id: null,
+    sharepoint_item_id: null,
+    sharepoint_unique_id: null,
+    sharepoint_etag: null,
+    imported_at: null,
+    created_by: null,
+    updated_by: null,
+    created_at: "2026-06-01T00:00:00.000Z",
+    updated_at: "2026-06-01T00:00:00.000Z",
+  }
+  const client = {
+    id: `${key}-client`,
+    tax_id: "B90393547",
+    name: "Edisol Soluciones Energeticas SL",
+    address: "Avda. Tecnologia 1, 41015, Sevilla",
+    contact_name: "Miguel Martin",
+    contact_phone: "664001038",
+    contact_email: "facturacion@example.com",
+    billing_email: document.billing_email,
+    payment_method: "sepa",
+  }
+
+  return {
+    key,
+    document_number: documentNumber,
+    payload: buildBillingDocumentPrintPayload({ document, lines, client }),
+  }
+}
+
+function layoutFixtures() {
+  return [
+    buildFixturePayload({
+      key: "edisol-4-lines-long-email",
+      documentNumber: "F-2026/133",
+      lineCount: 4,
+      longEmail: true,
+    }),
+    buildFixturePayload({
+      key: "single-line",
+      documentNumber: "F-2026/901",
+      lineCount: 1,
+    }),
+    buildFixturePayload({
+      key: "eight-lines-long-descriptions",
+      documentNumber: "F-2026/902",
+      lineCount: 8,
+      longEmail: true,
+      longDescriptions: true,
+    }),
+    buildFixturePayload({
+      key: "twelve-lines",
+      documentNumber: "F-2026/903",
+      lineCount: 12,
+      longDescriptions: true,
+    }),
+  ]
+}
+
+function cssRule(selector) {
+  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+  const match = billingDocumentPrintStyles.match(new RegExp(`${escaped}\\s*\\{([\\s\\S]*?)\\}`, "m"))
+  return match?.[1] ?? ""
+}
+
+function firstErrorLine(error) {
+  return String(error instanceof Error ? error.message : error || "unknown").split(/\r?\n/)[0]
+}
+
+function hasCssDeclaration(rule, property) {
+  return rule
+    .split(";")
+    .map((declaration) => declaration.trim())
+    .some((declaration) => declaration.startsWith(`${property}:`))
+}
+
+function staticLayoutFailures(html) {
+  const linesRule = cssRule(".billing-lines")
+  const totalsRule = cssRule(".billing-totals")
+  const contentRule = cssRule(".billing-content")
+  const partyRule = cssRule(".billing-party p")
+  const lineCellRule = cssRule(".billing-lines td")
+  const failures = []
+
+  if (!contentRule.includes("position: absolute")) {
+    failures.push("Falta el contenedor fiscal .billing-content con anclaje de pagina")
+  }
+
+  if (linesRule.includes("position: absolute") || hasCssDeclaration(linesRule, "top")) {
+    failures.push(".billing-lines vuelve a tener posicion o top fijo")
+  }
+
+  if (
+    totalsRule.includes("position: absolute") ||
+    hasCssDeclaration(totalsRule, "top") ||
+    hasCssDeclaration(totalsRule, "right")
+  ) {
+    failures.push(".billing-totals vuelve a tener posicion fija")
+  }
+
+  if (!partyRule.includes("overflow-wrap: anywhere")) {
+    failures.push("Los datos de cliente/emisor no fuerzan corte de texto largo")
+  }
+
+  if (!lineCellRule.includes("overflow-wrap: anywhere")) {
+    failures.push("Las celdas de lineas no fuerzan corte de texto largo")
+  }
+
+  if (!html.includes('<section class="billing-content">')) {
+    failures.push("El HTML no agrupa concepto, lineas y totales en .billing-content")
+  }
+
+  if (html.indexOf('class="billing-lines"') > html.indexOf('class="billing-totals"')) {
+    failures.push("Los totales aparecen antes que la tabla de lineas")
+  }
+
+  return failures
+}
+
+function runStaticLayoutFallback(launchError) {
+  const layoutDir = path.join(OUT_DIR, "layout")
+  fs.mkdirSync(layoutDir, { recursive: true })
+
+  const assetBaseUrl = pathToFileURL(path.join(ROOT, "public")).href.replace(/\/$/g, "")
+  const results = layoutFixtures().map((fixture) => {
+    const html = buildBillingDocumentPrintHtml(fixture.payload, { fullDocument: true, assetBaseUrl })
+    const htmlPath = path.join(layoutDir, `${fixture.key}.html`)
+    fs.writeFileSync(htmlPath, html)
+
+    const failures = staticLayoutFailures(html)
+
+    return {
+      key: fixture.key,
+      document_number: fixture.document_number,
+      status: failures.length === 0 ? "PASS" : "FAIL",
+      mode: "static-fallback",
+      failures,
+      metrics: {
+        browser_unavailable: firstErrorLine(launchError),
+      },
+      artifacts: {
+        html: htmlPath,
+        screenshot: null,
+      },
+    }
+  })
+  const failures = results.flatMap((result) =>
+    result.failures.map((failure) => `${result.key}: ${failure}`),
+  )
+
+  return {
+    status: failures.length === 0 ? "PASS" : "FAIL",
+    mode: "static-fallback",
+    failures,
+    results,
+    output_dir: layoutDir,
+    browser_unavailable: firstErrorLine(launchError),
+  }
+}
+
+function rectOverlapPx(first, second) {
+  if (!first || !second) {
+    return 0
+  }
+
+  return Math.max(0, Math.min(first.bottom, second.bottom) - Math.max(first.top, second.top))
+}
+
+async function auditLayoutFixture(browser, fixture) {
+  const layoutDir = path.join(OUT_DIR, "layout")
+  fs.mkdirSync(layoutDir, { recursive: true })
+
+  const htmlPath = path.join(layoutDir, `${fixture.key}.html`)
+  const screenshotPath = path.join(layoutDir, `${fixture.key}.png`)
+  const assetBaseUrl = pathToFileURL(path.join(ROOT, "public")).href.replace(/\/$/g, "")
+
+  fs.writeFileSync(htmlPath, buildBillingDocumentPrintHtml(fixture.payload, { fullDocument: true, assetBaseUrl }))
+
+  const page = await browser.newPage()
+
+  try {
+    await page.setViewportSize(LAYOUT_FIXTURE_VIEWPORT)
+    await page.goto(pathToFileURL(htmlPath).href, { waitUntil: "networkidle" })
+    await page.waitForFunction(() => Array.from(document.images).every((image) => image.complete), null, {
+      timeout: 10000,
+    })
+    await page.screenshot({ path: screenshotPath, fullPage: true })
+
+    const metrics = await page.evaluate(() => {
+      function plainRect(element) {
+        if (!element) {
+          return null
+        }
+
+        const rect = element.getBoundingClientRect()
+        return {
+          top: rect.top,
+          right: rect.right,
+          bottom: rect.bottom,
+          left: rect.left,
+          width: rect.width,
+          height: rect.height,
+        }
+      }
+
+      const pageRect = plainRect(document.querySelector(".billing-page"))
+      const linesRect = plainRect(document.querySelector(".billing-lines"))
+      const totalsRect = plainRect(document.querySelector(".billing-totals"))
+      const contentRect = plainRect(document.querySelector(".billing-content"))
+      const partiesRect = plainRect(document.querySelector(".billing-parties"))
+      const rows = Array.from(document.querySelectorAll(".billing-lines tbody tr")).map(plainRect)
+      const boundedSelectors = [
+        ".billing-party p",
+        ".billing-concept",
+        ".billing-lines",
+        ".billing-totals",
+        ".billing-observations",
+      ]
+      const overflowing = []
+
+      if (pageRect) {
+        for (const selector of boundedSelectors) {
+          for (const element of document.querySelectorAll(selector)) {
+            const rect = plainRect(element)
+            if (!rect) {
+              continue
+            }
+
+            if (rect.left < pageRect.left - 1 || rect.right > pageRect.right + 1) {
+              overflowing.push({
+                selector,
+                text: String(element.textContent ?? "").slice(0, 80),
+                left: rect.left,
+                right: rect.right,
+              })
+            }
+          }
+        }
+      }
+
+      const rowOverlaps = rows
+        .slice(1)
+        .map((row, index) => ({
+          previous: index,
+          current: index + 1,
+          overlap: Math.max(0, Math.min(rows[index].bottom, row.bottom) - Math.max(rows[index].top, row.top)),
+        }))
+        .filter((row) => row.overlap > 0.5)
+
+      return {
+        viewport: { width: window.innerWidth, height: window.innerHeight },
+        document_scroll_width: document.documentElement.scrollWidth,
+        document_scroll_height: document.documentElement.scrollHeight,
+        row_count: rows.length,
+        bounds: {
+          page: pageRect,
+          parties: partiesRect,
+          content: contentRect,
+          lines: linesRect,
+          totals: totalsRect,
+        },
+        row_overlaps: rowOverlaps,
+        overflowing,
+      }
+    })
+    const failures = []
+    const linesTotalsOverlap = rectOverlapPx(metrics.bounds.lines, metrics.bounds.totals)
+    const totalsGap = metrics.bounds.lines && metrics.bounds.totals
+      ? metrics.bounds.totals.top - metrics.bounds.lines.bottom
+      : null
+
+    if (linesTotalsOverlap > 0 || (totalsGap != null && totalsGap < MIN_TOTALS_GAP_PX)) {
+      failures.push(`Lineas y totales se solapan o no respetan separacion minima: gap=${totalsGap}`)
+    }
+
+    if (
+      metrics.bounds.page &&
+      metrics.bounds.content &&
+      metrics.bounds.content.bottom > metrics.bounds.page.bottom - MIN_PAGE_BOTTOM_GAP_PX
+    ) {
+      failures.push("El contenido fiscal queda demasiado cerca del final de pagina")
+    }
+
+    if (metrics.row_overlaps.length > 0) {
+      failures.push(`Filas de lineas solapadas: ${metrics.row_overlaps.length}`)
+    }
+
+    if (metrics.overflowing.length > 0) {
+      failures.push(`Contenido fuera del ancho de pagina: ${metrics.overflowing.length} nodos`)
+    }
+
+    if (metrics.document_scroll_width > LAYOUT_FIXTURE_VIEWPORT.width + 2) {
+      failures.push(`Scroll horizontal inesperado: ${metrics.document_scroll_width}px`)
+    }
+
+    return {
+      key: fixture.key,
+      document_number: fixture.document_number,
+      status: failures.length === 0 ? "PASS" : "FAIL",
+      failures,
+      metrics: {
+        ...metrics,
+        totals_gap_px: totalsGap,
+        lines_totals_overlap_px: linesTotalsOverlap,
+      },
+      artifacts: {
+        html: htmlPath,
+        screenshot: screenshotPath,
+      },
+    }
+  } finally {
+    await page.close()
+  }
+}
+
+async function runLayoutFixtureAudit() {
+  let browser
+
+  try {
+    browser = await launchAuditBrowser()
+  } catch (error) {
+    const summary = runStaticLayoutFallback(error)
+    fs.writeFileSync(path.join(OUT_DIR, "layout-summary.json"), `${JSON.stringify(summary, null, 2)}\n`)
+    fs.writeFileSync(
+      path.join(OUT_DIR, "layout-summary.md"),
+      [
+        "# Billing PDF Layout Audit",
+        "",
+        `- Status: ${summary.status}`,
+        "- Mode: static fallback",
+        `- Browser unavailable: ${summary.browser_unavailable}`,
+        `- Fixtures: ${summary.results.length}`,
+        "",
+        "Failures:",
+        ...(summary.failures.length ? summary.failures.map((failure) => `- ${failure}`) : ["- None"]),
+        "",
+        "Artifacts:",
+        "- layout/*.html",
+        "",
+      ].join("\n"),
+    )
+
+    return summary
+  }
+
+  try {
+    const results = []
+    for (const fixture of layoutFixtures()) {
+      results.push(await auditLayoutFixture(browser, fixture))
+    }
+
+    const failures = results.flatMap((result) =>
+      result.failures.map((failure) => `${result.key}: ${failure}`),
+    )
+    const summary = {
+      status: failures.length === 0 ? "PASS" : "FAIL",
+      failures,
+      results,
+      output_dir: path.join(OUT_DIR, "layout"),
+    }
+
+    fs.writeFileSync(path.join(OUT_DIR, "layout-summary.json"), `${JSON.stringify(summary, null, 2)}\n`)
+    fs.writeFileSync(
+      path.join(OUT_DIR, "layout-summary.md"),
+      [
+        "# Billing PDF Layout Audit",
+        "",
+        `- Status: ${summary.status}`,
+        `- Fixtures: ${results.length}`,
+        "",
+        "Failures:",
+        ...(failures.length ? failures.map((failure) => `- ${failure}`) : ["- None"]),
+        "",
+        "Artifacts:",
+        ...results.flatMap((result) => [
+          `- ${result.key}.html`,
+          `- ${result.key}.png`,
+        ]),
+        "",
+      ].join("\n"),
+    )
+
+    return summary
+  } finally {
+    await browser.close()
+  }
 }
 
 function renderPdf(pdfPath, name) {
@@ -543,10 +1053,58 @@ function writeSummary(summary) {
   )
 }
 
+function writeLayoutOnlySummary(summary) {
+  fs.writeFileSync(path.join(OUT_DIR, "summary.json"), `${JSON.stringify(summary, null, 2)}\n`)
+  fs.writeFileSync(
+    path.join(OUT_DIR, "summary.md"),
+    [
+      "# Billing PDF Audit",
+      "",
+      `- Status: ${summary.status}`,
+      "- Mode: offline layout fixtures",
+      `- Fixtures: ${summary.layout_fixtures.results.length}`,
+      "",
+      "Failures:",
+      ...(summary.failures.length ? summary.failures.map((failure) => `- ${failure}`) : ["- None"]),
+      "",
+      "Artifacts:",
+      "- layout-summary.json",
+      "- layout-summary.md",
+      "- layout/*.html",
+      "- layout/*.png",
+      "",
+    ].join("\n"),
+  )
+}
+
 async function main() {
   readEnvFile(path.join(ROOT, ".env.local"))
   readEnvFile(path.join(ROOT, "..", ".env"))
   ensureOutDir()
+  const layoutAudit = await runLayoutFixtureAudit()
+  const hasRemoteAuditEnv = Boolean(
+    process.env.NEXT_PUBLIC_SUPABASE_URL &&
+    (process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY),
+  )
+
+  if (!hasRemoteAuditEnv) {
+    const summary = {
+      status: layoutAudit.status,
+      mode: "offline-layout-fixtures",
+      failures: layoutAudit.failures,
+      layout_fixtures: layoutAudit,
+      output_dir: OUT_DIR,
+    }
+
+    writeLayoutOnlySummary(summary)
+    console.log(JSON.stringify(summary, null, 2))
+
+    if (layoutAudit.status !== "PASS") {
+      process.exitCode = 1
+    }
+
+    return
+  }
 
   const supabase = createClient(
     requireEnv("NEXT_PUBLIC_SUPABASE_URL"),
@@ -580,7 +1138,8 @@ async function main() {
   const passed =
     comparison.dimensionsMatch &&
     gates.passed &&
-    (strictGlobalPassed || acceptedAntialiasingResidual)
+    (strictGlobalPassed || acceptedAntialiasingResidual) &&
+    layoutAudit.status === "PASS"
 
   const failures = [
     ...(comparison.dimensionsMatch ? [] : ["Dimensiones: el render generado no coincide con A4 historico"]),
@@ -591,6 +1150,7 @@ async function main() {
       ? []
       : [`Delta medio global: ${comparison.meanDelta.toFixed(2)} > ${MAX_MEAN_DELTA.toFixed(2)}`]),
     ...gates.failures,
+    ...layoutAudit.failures.map((failure) => `Layout fixture: ${failure}`),
   ]
 
   const summary = {
@@ -613,6 +1173,7 @@ async function main() {
       ? "Geometria, color y assets pasan; el residual bruto procede de rasterizacion de Franklin Gothic en Word PDF frente a Chromium."
       : null,
     failures,
+    layout_fixtures: layoutAudit,
     artifacts: {
       reference_pdf: referencePdf,
       generated_pdf: generatedPdf,
