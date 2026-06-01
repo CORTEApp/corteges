@@ -15,25 +15,8 @@ import {
 } from "@/lib/billing/pdf-template-html.mjs"
 
 const BILLING_DOCUMENTS_BUCKET = "billing-documents"
-
-type BrowserInstance = {
-  close: () => Promise<void>
-  newContext: () => Promise<{
-    addCookies: (cookies: Array<{ name: string; value: string; url: string }>) => Promise<void>
-    close: () => Promise<void>
-    newPage: () => Promise<{
-      goto: (url: string, options: { waitUntil: "networkidle" }) => Promise<unknown>
-      pdf: (options: {
-        format: "A4"
-        margin: { top: string; right: string; bottom: string; left: string }
-        preferCSSPageSize: boolean
-        printBackground: boolean
-      }) => Promise<Buffer | Uint8Array>
-      setContent: (html: string, options: { waitUntil: "networkidle" }) => Promise<void>
-      url: () => string
-    }>
-  }>
-}
+const PLAYWRIGHT_BROWSER_PATH = "0"
+const PLAYWRIGHT_CHROMIUM_ARGS = ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"]
 
 type PdfBrowserSession = {
   addCookies: (cookies: Array<{ name: string; value: string; url: string }>) => Promise<void>
@@ -87,57 +70,34 @@ function contentDisposition(filename: string) {
   return `attachment; filename="${fallback}"; filename*=UTF-8''${encodeURIComponent(filename)}`
 }
 
-async function launchLocalChromiumBrowser(): Promise<BrowserInstance> {
-  const { chromium } = await import("playwright")
-  return chromium.launch({ headless: true }) as Promise<BrowserInstance>
-}
-
 async function createPdfBrowserSession(): Promise<PdfBrowserSession> {
-  if (process.env.VERCEL) {
-    const chromiumModule = await import("@sparticuz/chromium")
-    const { chromium: playwright } = await import("playwright-core")
-    const chromium = chromiumModule.default
-    chromium.setGraphicsMode = false
-
-    const userDataDir = await mkdtemp(join(tmpdir(), "corteges-pdf-"))
-
-    try {
-      const context = await playwright.launchPersistentContext(userDataDir, {
-        args: chromium.args,
-        executablePath: await chromium.executablePath(),
-        headless: true,
-      })
-
-      return {
-        addCookies: (cookies) => context.addCookies(cookies),
-        close: async () => {
-          try {
-            await context.close()
-          } finally {
-            await rm(userDataDir, { recursive: true, force: true })
-          }
-        },
-        newPage: () => context.newPage(),
-      } as PdfBrowserSession
-    } catch (error) {
-      await rm(userDataDir, { recursive: true, force: true })
-      throw error
-    }
+  if (process.env.NODE_ENV === "production" && !process.env.PLAYWRIGHT_BROWSERS_PATH) {
+    process.env.PLAYWRIGHT_BROWSERS_PATH = PLAYWRIGHT_BROWSER_PATH
   }
 
-  const browser = await launchLocalChromiumBrowser()
-  const context = await browser.newContext()
+  const { chromium } = await import("playwright")
+  const userDataDir = await mkdtemp(join(tmpdir(), "corteges-pdf-"))
 
-  return {
-    addCookies: (cookies) => context.addCookies(cookies),
-    close: async () => {
-      try {
-        await context.close()
-      } finally {
-        await browser.close()
-      }
-    },
-    newPage: () => context.newPage(),
+  try {
+    const context = await chromium.launchPersistentContext(userDataDir, {
+      args: PLAYWRIGHT_CHROMIUM_ARGS,
+      headless: true,
+    })
+
+    return {
+      addCookies: (cookies) => context.addCookies(cookies),
+      close: async () => {
+        try {
+          await context.close()
+        } finally {
+          await rm(userDataDir, { recursive: true, force: true })
+        }
+      },
+      newPage: () => context.newPage(),
+    } as PdfBrowserSession
+  } catch (error) {
+    await rm(userDataDir, { recursive: true, force: true })
+    throw error
   }
 }
 
