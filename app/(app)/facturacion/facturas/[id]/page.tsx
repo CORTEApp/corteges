@@ -1,9 +1,11 @@
 import Link from "next/link"
-import { ArrowLeft, Eye, FileCheck2, FileDown } from "lucide-react"
+import { ArrowLeft, Eye, FileCheck2, FileDown, RefreshCw } from "lucide-react"
 
 import { BillingDocumentDetailView } from "@/app/(app)/facturacion/_components/billing-document-detail"
+import { regenerateInvoicePdfAction } from "@/app/(app)/facturacion/facturas/actions"
 import { ResourceDetailScreen } from "@/components/resource-screens"
 import { Button } from "@/components/ui/button"
+import { FormSubmitButton } from "@/components/ui/form-submit-button"
 import { requireBillingDocumentDetail } from "@/lib/billing/data"
 import { formatAmount, formatDate } from "@/lib/billing/format"
 
@@ -19,6 +21,7 @@ export default async function FacturaDetailPage({
   const { id } = await params
   const detail = await requireBillingDocumentDetail(id, "invoice")
   const { document, files } = detail
+  const generatedPdf = files.find((file) => file.source_kind === "generated") ?? null
 
   return (
     <ResourceDetailScreen
@@ -28,12 +31,25 @@ export default async function FacturaDetailPage({
         subtitle: `${document.client_name} · ${formatDate(document.issue_date)}`,
         actions: (
           <div className="flex flex-wrap gap-2">
-            <Button asChild>
-              <Link href={`/facturacion/facturas/${document.id}/pdf`}>
-                <FileDown aria-hidden="true" />
-                Descargar PDF
-              </Link>
-            </Button>
+            {generatedPdf ? (
+              <Button asChild>
+                <Link href={`/facturacion/facturas/${document.id}/documentos/${generatedPdf.id}`}>
+                  <FileDown aria-hidden="true" />
+                  Descargar PDF
+                </Link>
+              </Button>
+            ) : null}
+            <form action={regenerateInvoicePdfAction}>
+              <input type="hidden" name="invoice_id" value={document.id} />
+              <FormSubmitButton
+                pendingLabel="Generando PDF..."
+                pendingDescription="Preparando el PDF actualizado de la factura."
+                variant={generatedPdf ? "outline" : "default"}
+              >
+                <RefreshCw aria-hidden="true" />
+                {generatedPdf ? "Regenerar PDF" : "Generar PDF"}
+              </FormSubmitButton>
+            </form>
             <Button asChild variant="outline">
               <Link href={`/facturacion/facturas/${document.id}/plantilla`}>
                 <Eye aria-hidden="true" />
