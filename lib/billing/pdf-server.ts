@@ -71,24 +71,7 @@ function contentDisposition(filename: string) {
 }
 
 async function launchChromiumBrowser(): Promise<BrowserInstance> {
-  if (process.env.VERCEL) {
-    return launchBundledChromiumBrowser()
-  }
-
   return launchLocalChromiumBrowser()
-}
-
-async function launchBundledChromiumBrowser(): Promise<BrowserInstance> {
-  const chromiumModule = await import("@sparticuz/chromium")
-  const { chromium: playwright } = await import("playwright-core")
-  const chromium = chromiumModule.default
-  chromium.setGraphicsMode = false
-
-  return playwright.launch({
-    args: chromium.args,
-    executablePath: await chromium.executablePath(),
-    headless: true,
-  }) as Promise<BrowserInstance>
 }
 
 async function launchLocalChromiumBrowser(): Promise<BrowserInstance> {
