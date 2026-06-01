@@ -149,7 +149,7 @@ function CandidateLines({ candidate }: { candidate: BillingInvoiceApprovalCandid
   return (
     <div className="overflow-hidden rounded-[var(--radius-panel)] border border-border/70 bg-[color:var(--surface-2)]">
       <div className="overflow-x-auto">
-        <table className="min-w-[48rem] border-collapse text-sm">
+        <table className="w-full min-w-[48rem] border-collapse text-sm">
           <thead className="bg-[color:var(--surface-3)] text-muted-foreground">
             <tr>
               <th className="px-3 py-2.5 text-left font-medium">Codigo</th>
