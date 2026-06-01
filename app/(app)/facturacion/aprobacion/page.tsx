@@ -18,11 +18,13 @@ import {
   cancelInvoiceApprovalCandidateAction,
   generateInvoiceApprovalCandidatesAction,
 } from "@/app/(app)/facturacion/aprobacion/actions"
+import { ResourceContentTabs } from "@/components/resource-content-tabs"
 import { ResourceListScreen } from "@/components/resource-screens"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { EmptyState } from "@/components/ui/empty-state"
 import { FormSection } from "@/components/ui/form-section"
+import { FormSectionTabPanel } from "@/components/ui/form-section-tabs"
 import { FormSubmitButton } from "@/components/ui/form-submit-button"
 import { Input } from "@/components/ui/input"
 import {
@@ -39,6 +41,7 @@ import {
   toNumber,
 } from "@/lib/billing/format"
 import type { BillingInvoiceApprovalCandidateDetail } from "@/lib/billing/types"
+import { cn } from "@/lib/utils"
 import { requireAdminAccess } from "@/lib/users/server"
 
 export const runtime = "nodejs"
@@ -114,9 +117,15 @@ function QueryNotice({
   return null
 }
 
-function CandidateWarnings({ candidate }: { candidate: BillingInvoiceApprovalCandidateDetail }) {
+function CandidateWarnings({
+  candidate,
+  showMissingEmail = true,
+}: {
+  candidate: BillingInvoiceApprovalCandidateDetail
+  showMissingEmail?: boolean
+}) {
   const warnings = [
-    !candidate.billing_email ? "Sin correo de facturacion: la aprobacion fallara antes de consumir numero F." : null,
+    showMissingEmail && !candidate.billing_email ? "Sin correo de facturacion: la aprobacion fallara antes de consumir numero F." : null,
     candidate.last_error ? candidate.last_error : null,
   ].filter((warning): warning is string => Boolean(warning))
 
@@ -138,33 +147,35 @@ function CandidateWarnings({ candidate }: { candidate: BillingInvoiceApprovalCan
 
 function CandidateLines({ candidate }: { candidate: BillingInvoiceApprovalCandidateDetail }) {
   return (
-    <div className="overflow-x-auto">
-      <table className="min-w-full border-collapse text-sm">
-        <thead className="bg-muted/30">
-          <tr>
-            <th className="px-3 py-2 text-left font-medium">Codigo</th>
-            <th className="px-3 py-2 text-left font-medium">Concepto</th>
-            <th className="px-3 py-2 text-right font-medium">Cant.</th>
-            <th className="px-3 py-2 text-right font-medium">Base</th>
-            <th className="px-3 py-2 text-right font-medium">IVA</th>
-            <th className="px-3 py-2 text-right font-medium">Total</th>
-          </tr>
-        </thead>
-        <tbody>
-          {candidate.lines.map((line) => (
-            <tr key={line.id} className="border-t border-border/70">
-              <td className="px-3 py-2 align-top font-semibold text-foreground">{line.code ?? "-"}</td>
-              <td className="max-w-[28rem] px-3 py-2 align-top text-foreground/80">{line.description}</td>
-              <td className="px-3 py-2 text-right align-top text-foreground/80">{formatAmount(line.quantity)}</td>
-              <td className="px-3 py-2 text-right align-top text-foreground/80">{formatAmount(line.subtotal_amount)} €</td>
-              <td className="px-3 py-2 text-right align-top text-foreground/80">
-                {formatAmount(line.tax_amount)} € · {formatAmount(line.vat_rate)}%
-              </td>
-              <td className="px-3 py-2 text-right align-top font-semibold text-foreground">{formatAmount(line.total_amount)} €</td>
+    <div className="overflow-hidden rounded-[var(--radius-panel)] border border-border/70 bg-[color:var(--surface-2)]">
+      <div className="overflow-x-auto">
+        <table className="min-w-[48rem] border-collapse text-sm">
+          <thead className="bg-[color:var(--surface-3)] text-muted-foreground">
+            <tr>
+              <th className="px-3 py-2.5 text-left font-medium">Codigo</th>
+              <th className="px-3 py-2.5 text-left font-medium">Concepto</th>
+              <th className="px-3 py-2.5 text-right font-medium">Cant.</th>
+              <th className="px-3 py-2.5 text-right font-medium">Base</th>
+              <th className="px-3 py-2.5 text-right font-medium">IVA</th>
+              <th className="px-3 py-2.5 text-right font-medium">Total</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {candidate.lines.map((line) => (
+              <tr key={line.id} className="border-t border-border/70 bg-[color:var(--surface-1)]">
+                <td className="px-3 py-2.5 align-top font-semibold text-foreground">{line.code ?? "-"}</td>
+                <td className="max-w-[30rem] px-3 py-2.5 align-top text-foreground/80">{line.description}</td>
+                <td className="px-3 py-2.5 text-right align-top text-foreground/80">{formatAmount(line.quantity)}</td>
+                <td className="px-3 py-2.5 text-right align-top text-foreground/80">{formatAmount(line.subtotal_amount)} €</td>
+                <td className="px-3 py-2.5 text-right align-top text-foreground/80">
+                  {formatAmount(line.tax_amount)} € · {formatAmount(line.vat_rate)}%
+                </td>
+                <td className="px-3 py-2.5 text-right align-top font-semibold text-foreground">{formatAmount(line.total_amount)} €</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }
@@ -172,27 +183,37 @@ function CandidateLines({ candidate }: { candidate: BillingInvoiceApprovalCandid
 function CandidateRow({
   candidate,
   periodMonth,
+  mode = "manage",
 }: {
   candidate: BillingInvoiceApprovalCandidateDetail
   periodMonth: string
+  mode?: "manage" | "read"
 }) {
-  const approvable = canApprove(candidate)
-  const cancellable = canCancel(candidate)
+  const editable = mode === "manage"
+  const approvable = editable && canApprove(candidate)
+  const cancellable = editable && canCancel(candidate)
 
   return (
-    <article className="grid gap-4 px-5 py-5">
-      <div className="grid gap-4 xl:grid-cols-[2rem_minmax(0,1.15fr)_minmax(22rem,0.85fr)] xl:items-start">
-        <label className="flex h-10 items-center xl:justify-center" title="Seleccionar para aprobar en lote">
-          <input
-            form="bulk-approve-form"
-            type="checkbox"
-            name="candidate_id"
-            value={candidate.id}
-            disabled={!approvable}
-            className="size-4 accent-[color:var(--primary)] disabled:opacity-40"
-            aria-label={`Seleccionar ${candidate.client_name}`}
-          />
-        </label>
+    <article className="grid gap-4 rounded-[var(--radius-panel)] border border-border/80 bg-[color:var(--surface-1)] p-4 shadow-[0_16px_34px_-30px_rgba(15,23,42,0.26)] md:p-5">
+      <div
+        className={cn(
+          "grid gap-4 xl:items-start",
+          editable ? "xl:grid-cols-[2rem_minmax(0,1.15fr)_minmax(20rem,0.85fr)]" : "xl:grid-cols-[minmax(0,1.15fr)_minmax(20rem,0.85fr)]",
+        )}
+      >
+        {editable ? (
+          <label className="flex h-10 items-center xl:justify-center" title="Seleccionar para aprobar en lote">
+            <input
+              form="bulk-approve-form"
+              type="checkbox"
+              name="candidate_id"
+              value={candidate.id}
+              disabled={!approvable}
+              className="size-4 accent-[color:var(--primary)] disabled:opacity-40"
+              aria-label={`Seleccionar ${candidate.client_name}`}
+            />
+          </label>
+        ) : null}
 
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
@@ -228,7 +249,7 @@ function CandidateRow({
             <Amount label="IVA" value={candidate.tax_amount} />
             <Amount label="Total" value={candidate.total_amount} strong />
           </div>
-          <div className="flex flex-wrap justify-end gap-2">
+          {editable ? <div className="flex flex-wrap justify-end gap-2">
             {approvable ? (
               <form action={approveInvoiceApprovalCandidateAction}>
                 <input type="hidden" name="period" value={periodMonth} />
@@ -249,11 +270,11 @@ function CandidateRow({
                 </FormSubmitButton>
               </form>
             ) : null}
-          </div>
+          </div> : null}
         </div>
       </div>
 
-      <CandidateWarnings candidate={candidate} />
+      <CandidateWarnings candidate={candidate} showMissingEmail={editable} />
       <CandidateLines candidate={candidate} />
     </article>
   )
@@ -278,6 +299,38 @@ function Amount({
   )
 }
 
+function CandidateList({
+  candidates,
+  periodMonth,
+  mode,
+  emptyTitle,
+  emptyDescription,
+  emptyActions,
+}: {
+  candidates: BillingInvoiceApprovalCandidateDetail[]
+  periodMonth: string
+  mode: "manage" | "read"
+  emptyTitle: string
+  emptyDescription: string
+  emptyActions?: React.ReactNode
+}) {
+  if (!candidates.length) {
+    return (
+      <div className="px-5 py-5">
+        <EmptyState title={emptyTitle} description={emptyDescription} actions={emptyActions} />
+      </div>
+    )
+  }
+
+  return (
+    <div className="grid gap-3 p-4 md:p-5">
+      {candidates.map((candidate) => (
+        <CandidateRow key={candidate.id} candidate={candidate} periodMonth={periodMonth} mode={mode} />
+      ))}
+    </div>
+  )
+}
+
 export default async function BillingInvoiceApprovalPage({
   searchParams,
 }: {
@@ -288,12 +341,43 @@ export default async function BillingInvoiceApprovalPage({
   const periodStart = normalizeBillingPeriodStart(firstParam(params.period))
   const periodMonth = billingPeriodMonthValue(periodStart)
   const { batch, candidates } = await listInvoiceApprovalPageData(periodStart)
-  const pendingCount = candidates.filter((candidate) => candidate.status === "pending").length
-  const sentCount = candidates.filter((candidate) => candidate.status === "sent").length
-  const failedCount = candidates.filter((candidate) => candidate.status === "failed").length
-  const totalAmount = candidates
-    .filter((candidate) => candidate.status !== "cancelled")
+  const workCandidates = candidates.filter((candidate) =>
+    candidate.status === "pending" || candidate.status === "failed" || candidate.status === "processing"
+  )
+  const approvedCandidates = candidates.filter((candidate) => candidate.status === "sent")
+  const cancelledCandidates = candidates.filter((candidate) => candidate.status === "cancelled")
+  const pendingCount = workCandidates.filter((candidate) => candidate.status === "pending").length
+  const processingCount = workCandidates.filter((candidate) => candidate.status === "processing").length
+  const sentCount = approvedCandidates.length
+  const failedCount = workCandidates.filter((candidate) => candidate.status === "failed").length
+  const manageableTotalAmount = workCandidates
     .reduce((total, candidate) => total + toNumber(candidate.total_amount), 0)
+  const approvalTabs = [
+    {
+      id: "gestion",
+      label: `Por gestionar (${workCandidates.length})`,
+      icon: <CircleAlert className="size-4" aria-hidden="true" />,
+    },
+    {
+      id: "aprobadas",
+      label: `Aprobadas (${approvedCandidates.length})`,
+      icon: <Check className="size-4" aria-hidden="true" />,
+    },
+    ...(cancelledCandidates.length
+      ? [
+          {
+            id: "canceladas",
+            label: `Canceladas (${cancelledCandidates.length})`,
+            icon: <XCircle className="size-4" aria-hidden="true" />,
+          },
+        ]
+      : []),
+  ]
+  const workSummary = [
+    pendingCount ? `${pendingCount} pendientes` : null,
+    failedCount ? `${failedCount} fallidas` : null,
+    processingCount ? `${processingCount} procesando` : null,
+  ].filter(Boolean).join(" · ")
 
   return (
     <ResourceListScreen
@@ -328,9 +412,10 @@ export default async function BillingInvoiceApprovalPage({
           icon: <CalendarDays className="size-4" aria-hidden="true" />,
         },
         {
-          label: "Pendientes",
-          value: String(pendingCount),
-          tone: pendingCount ? "warning" : "neutral",
+          label: "Por gestionar",
+          value: String(workCandidates.length),
+          description: workSummary || "Sin trabajo pendiente",
+          tone: workCandidates.length ? "warning" : "neutral",
           icon: <CircleAlert className="size-4" aria-hidden="true" />,
         },
         {
@@ -340,8 +425,8 @@ export default async function BillingInvoiceApprovalPage({
           icon: <Check className="size-4" aria-hidden="true" />,
         },
         {
-          label: "Total",
-          value: `${formatAmount(totalAmount)} €`,
+          label: "Total por gestionar",
+          value: `${formatAmount(manageableTotalAmount)} €`,
           description: failedCount ? `${failedCount} fallidas` : "Sin fallos visibles",
           tone: failedCount ? "danger" : "info",
           icon: <Euro className="size-4" aria-hidden="true" />,
@@ -357,34 +442,31 @@ export default async function BillingInvoiceApprovalPage({
         selected={firstParam(params.selected)}
       />
 
-      <FormSection
-        title="Candidatos"
-        description="El cron solo prepara esta lista; la numeracion F se consume al aprobar."
-        action={
-          candidates.length ? (
-            <form id="bulk-approve-form" action={approveSelectedInvoiceApprovalCandidatesAction}>
-              <input type="hidden" name="period" value={periodMonth} />
-              <FormSubmitButton pendingLabel="Aprobando seleccionadas..." variant="outline">
-                <FileCheck2 className="size-4" aria-hidden="true" />
-                Aprobar seleccionadas
-              </FormSubmitButton>
-            </form>
-          ) : null
-        }
-        contentClassName="p-0"
-      >
-        {candidates.length ? (
-          <div className="divide-y divide-border/70">
-            {candidates.map((candidate) => (
-              <CandidateRow key={candidate.id} candidate={candidate} periodMonth={periodMonth} />
-            ))}
-          </div>
-        ) : (
-          <div className="px-5 py-5">
-            <EmptyState
-              title="No hay candidatos para este periodo."
-              description="Genera candidatos ahora o cambia de mes para revisar otro lote."
-              actions={
+      <ResourceContentTabs defaultTab="gestion" tabs={approvalTabs}>
+        <FormSectionTabPanel tabId="gestion">
+          <FormSection
+            title="Por gestionar"
+            description="Candidatos pendientes, fallidos o en proceso. La numeracion F se consume al aprobar."
+            action={
+              workCandidates.some(canApprove) ? (
+                <form id="bulk-approve-form" action={approveSelectedInvoiceApprovalCandidatesAction}>
+                  <input type="hidden" name="period" value={periodMonth} />
+                  <FormSubmitButton pendingLabel="Aprobando seleccionadas..." variant="outline">
+                    <FileCheck2 className="size-4" aria-hidden="true" />
+                    Aprobar seleccionadas
+                  </FormSubmitButton>
+                </form>
+              ) : null
+            }
+            contentClassName="p-0"
+          >
+            <CandidateList
+              candidates={workCandidates}
+              periodMonth={periodMonth}
+              mode="manage"
+              emptyTitle="No hay candidatos por gestionar."
+              emptyDescription="Genera candidatos ahora o cambia de mes para revisar otro lote."
+              emptyActions={
                 <form action={generateInvoiceApprovalCandidatesAction}>
                   <input type="hidden" name="period" value={periodMonth} />
                   <FormSubmitButton pendingLabel="Generando...">
@@ -394,9 +476,43 @@ export default async function BillingInvoiceApprovalPage({
                 </form>
               }
             />
-          </div>
-        )}
-      </FormSection>
+          </FormSection>
+        </FormSectionTabPanel>
+
+        <FormSectionTabPanel tabId="aprobadas">
+          <FormSection
+            title="Aprobadas"
+            description="Facturas creadas y enviadas. Quedan fuera del flujo de aprobacion diaria."
+            contentClassName="p-0"
+          >
+            <CandidateList
+              candidates={approvedCandidates}
+              periodMonth={periodMonth}
+              mode="read"
+              emptyTitle="No hay facturas aprobadas para este periodo."
+              emptyDescription="Cuando se aprueben y envien, apareceran aqui sin mezclarse con el trabajo pendiente."
+            />
+          </FormSection>
+        </FormSectionTabPanel>
+
+        {cancelledCandidates.length ? (
+          <FormSectionTabPanel tabId="canceladas">
+            <FormSection
+              title="Canceladas"
+              description="Candidatos retirados del lote mensual sin emitir factura."
+              contentClassName="p-0"
+            >
+              <CandidateList
+                candidates={cancelledCandidates}
+                periodMonth={periodMonth}
+                mode="read"
+                emptyTitle="No hay candidatos cancelados."
+                emptyDescription="Las cancelaciones del periodo apareceran aqui."
+              />
+            </FormSection>
+          </FormSectionTabPanel>
+        ) : null}
+      </ResourceContentTabs>
     </ResourceListScreen>
   )
 }
