@@ -40,6 +40,15 @@
   - documentos de `.ai/`
 - No dejes decisiones críticas solo en el dashboard.
 
+## Coolify / Producción
+- Antes de tocar despliegue, variables de entorno o credenciales de producción, lee `docs/ops/coolify.md`.
+- Panel Coolify: `https://coolify.corteapp.es`.
+- App productiva: UUID `x6k0as1xsjbt5lclqz77casu`, recurso `corteges`, FQDN `https://ges.corteapp.es`.
+- Proyecto/environment Coolify: `7f4213180e9a0ba72d6a62224` / `f54d9cffed21107a1f716c5d4`.
+- SSH operativo: `deploy@coolify.corteapp.es` con clave local `~/.ssh/corteapp_deploy_ed25519`.
+- No insertar ni actualizar `environment_variables.value` directamente en PostgreSQL: Coolify cifra esos valores con Laravel.
+- No versionar secretos; documenta solo nombres de variables, rutas y procedimientos.
+
 ## Fuente de verdad funcional con auditoría
 - Si el modo es `audit_bundle` o `hybrid`, solo pueden influir:
   1. `03_Plantilla_Proceso_Actual.docx`

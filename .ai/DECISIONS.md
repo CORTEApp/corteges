@@ -131,3 +131,7 @@
 5. Los submits externos a un `<form>` usan `form={id}` y cada formulario mantiene un `FormPendingScreen` interno para conservar el loader full-screen durante Server Actions.
 6. SharePoint y el origen tecnico/importado dejan de ser conceptos visibles de producto en la UI; se mantienen solo como infraestructura interna de importacion y auditoria.
 7. Los campos de negocio llamados `Origen` se conservan cuando describen actividad operativa, como CRM comercial o recepcion de facturas.
+
+## 2026-06-01
+
+1. La fuente de verdad operativa de Coolify queda documentada en `docs/ops/coolify.md`; los secretos no se versionan.
