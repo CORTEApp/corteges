@@ -1,3 +1,7 @@
+# AGENTS.md - corteges
+
+## Contrato existente del repo
+
 # CORTE.App operating system
 
 ## Stack por defecto
@@ -113,3 +117,35 @@ Si el trabajo supera un cambio trivial, crea o actualiza en `.ai/`:
 - No cierres setup sin QA si tocaste auth, RLS, esquema o wiring SSR.
 - `SYSTEM_STATUS.md` debe reflejar `SYSTEM_READY_FOR_DEVELOPMENT` solo si los checks mínimos pasan.
 - Si el pack promete UI fusionada, comprueba rutas, imports y coherencia del catálogo con `tools/ui_system_audit.py`.
+
+---
+
+<!-- codex-control:generated-context:v1 -->
+
+## Contexto Codex Control
+
+### Regla principal
+
+Nunca regeneres este proyecto desde cero. Trabaja siempre sobre la estructura existente, con cambios pequenos, localizados y reversibles.
+
+### Antes de tocar codigo
+
+1. Lee este archivo.
+2. Lee `.codex-control/context.md`.
+3. Lee `.codex-control/pages.md` si vas a tocar UI, rutas o navegacion.
+4. Lee el playbook aplicable en `.codex-control/playbooks/`.
+5. Revisa `CHANGELOG.md` para entender decisiones recientes.
+
+### Forma de trabajo
+
+- Modifica, no sustituyas.
+- Respeta patrones locales aunque no sean perfectos.
+- No cambies arquitectura, rutas, permisos, datos, despliegue ni secretos sin motivo explicito.
+- Si una tarea implica datos reales, migraciones, auth, pagos, despliegues o integraciones externas, pide o usa el perfil de auditoria indicado por Codex Control.
+- No ejecutes auditorias por iniciativa propia si el usuario no las ha seleccionado.
+- Documenta cambios relevantes en `CHANGELOG.md`.
+
+### Contexto generado
+
+Este contrato fue generado por Codex Control el 2026-06-06T08:04:48.444Z.
+La fuente machine-readable esta en `.codex-control/manifest.json`.

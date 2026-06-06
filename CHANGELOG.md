@@ -11,3 +11,11 @@
 - catálogo interno de bloques y reglas visuales dentro de `packages/`
 - auditoría estática reproducible con `tools/ui_system_audit.py`
 - actualización de prompts/skills para componer UI desde bloques internos
+
+<!-- codex-control:generated-context:v1 -->
+
+## 2026-06-06 - Normalizacion Codex Control
+
+- Regenerado contrato documental de Codex Control.
+- Actualizados AGENTS.md, contexto, paginas, playbooks, auditorias y manifest.
+- La documentacion previa queda preservada en este archivo y respaldada en `.codex-control/backups/`.

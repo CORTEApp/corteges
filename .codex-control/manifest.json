@@ -1,0 +1,585 @@
+{
+  "version": 1,
+  "generator": "codex-control normalize-repo-context",
+  "generator_version": "1.0.0",
+  "generated_at": "2026-06-06T08:04:48.444Z",
+  "repo_key": "corteges",
+  "package_name": "corteges",
+  "package_root": ".",
+  "package_manager": "npm",
+  "stack": [
+    "Next.js",
+    "React",
+    "Supabase",
+    "Tailwind",
+    "TypeScript"
+  ],
+  "systems": [
+    "api",
+    "auth",
+    "coolify",
+    "frontend",
+    "migrations",
+    "supabase",
+    "workers"
+  ],
+  "context_files": [
+    "AGENTS.md",
+    "CHANGELOG.md",
+    ".codex-control/context.md",
+    ".codex-control/pages.md",
+    ".codex-control/audits.json",
+    ".codex-control/playbooks/trabajo-incremental.md",
+    ".codex-control/playbooks/frontend.md",
+    ".codex-control/playbooks/api.md",
+    ".codex-control/playbooks/supabase.md",
+    ".codex-control/playbooks/migraciones.md",
+    ".codex-control/playbooks/coolify.md",
+    ".codex-control/playbooks/auth.md",
+    ".codex-control/playbooks/workers.md"
+  ],
+  "inject_on_conversation_start": [
+    "AGENTS.md",
+    ".codex-control/context.md",
+    ".codex-control/pages.md"
+  ],
+  "audit_profiles_file": ".codex-control/audits.json",
+  "routes": [
+    {
+      "route": "/",
+      "type": "page",
+      "file": "app/page.tsx",
+      "title": "Inicio",
+      "risk": "bajo"
+    },
+    {
+      "route": "/",
+      "type": "page",
+      "file": "scaffolds/nextjs/files/app/page.tsx",
+      "title": "Datos conectados",
+      "risk": "bajo"
+    },
+    {
+      "route": "/api/cron/billing/monthly-invoices",
+      "type": "api",
+      "file": "app/api/cron/billing/monthly-invoices/route.ts",
+      "title": "Api / Cron / Billing / Monthly Invoices",
+      "risk": "alto"
+    },
+    {
+      "route": "/auth/callback",
+      "type": "api",
+      "file": "app/auth/callback/route.ts",
+      "title": "Auth / Callback",
+      "risk": "bajo"
+    },
+    {
+      "route": "/auth/callback",
+      "type": "api",
+      "file": "scaffolds/nextjs/files/app/auth/callback/route.ts",
+      "title": "Auth / Callback",
+      "risk": "bajo"
+    },
+    {
+      "route": "/auth/error",
+      "type": "page",
+      "file": "app/auth/error/page.tsx",
+      "title": "Auth / Error",
+      "risk": "bajo"
+    },
+    {
+      "route": "/auth/error",
+      "type": "page",
+      "file": "scaffolds/nextjs/files/app/auth/error/page.tsx",
+      "title": "Auth / Error",
+      "risk": "bajo"
+    },
+    {
+      "route": "/auth/login",
+      "type": "page",
+      "file": "app/auth/login/page.tsx",
+      "title": "Auth / Login",
+      "risk": "bajo"
+    },
+    {
+      "route": "/auth/login",
+      "type": "page",
+      "file": "scaffolds/nextjs/files/app/auth/login/page.tsx",
+      "title": "Auth / Login",
+      "risk": "bajo"
+    },
+    {
+      "route": "/automatizaciones",
+      "type": "page",
+      "file": "app/(app)/automatizaciones/page.tsx",
+      "title": "Automatizaciones",
+      "risk": "bajo"
+    },
+    {
+      "route": "/automatizaciones",
+      "type": "page",
+      "file": "scaffolds/nextjs/files/app/(app)/automatizaciones/page.tsx",
+      "title": "Automatizaciones",
+      "risk": "bajo"
+    },
+    {
+      "route": "/casos",
+      "type": "page",
+      "file": "app/(marketing)/casos/page.tsx",
+      "title": "Casos",
+      "risk": "bajo"
+    },
+    {
+      "route": "/casos",
+      "type": "page",
+      "file": "scaffolds/nextjs/files/app/(marketing)/casos/page.tsx",
+      "title": "Operativa comercial",
+      "risk": "bajo"
+    },
+    {
+      "route": "/clientes",
+      "type": "page",
+      "file": "app/(app)/clientes/page.tsx",
+      "title": "Clientes",
+      "risk": "medio"
+    },
+    {
+      "route": "/clientes",
+      "type": "page",
+      "file": "scaffolds/nextjs/files/app/(app)/clientes/page.tsx",
+      "title": "Clientes",
+      "risk": "bajo"
+    },
+    {
+      "route": "/clientes/:id",
+      "type": "page",
+      "file": "app/(app)/clientes/[id]/page.tsx",
+      "title": "${client.tax_id} · mini-dashboard operativo del cliente",
+      "risk": "alto"
+    },
+    {
+      "route": "/clientes/:id/documentos/:documentId",
+      "type": "api",
+      "file": "app/(app)/clientes/[id]/documentos/[documentId]/route.ts",
+      "title": "Clientes / :Id / Documentos / :DocumentId",
+      "risk": "medio"
+    },
+    {
+      "route": "/clientes/:id/edit",
+      "type": "page",
+      "file": "app/(app)/clientes/[id]/edit/page.tsx",
+      "title": "Editar ${client.name}",
+      "risk": "alto"
+    },
+    {
+      "route": "/clientes/nuevo",
+      "type": "page",
+      "file": "app/(app)/clientes/nuevo/page.tsx",
+      "title": "Nuevo cliente",
+      "risk": "alto"
+    },
+    {
+      "route": "/contacto",
+      "type": "page",
+      "file": "app/(marketing)/contacto/page.tsx",
+      "title": "Contacto",
+      "risk": "bajo"
+    },
+    {
+      "route": "/contacto",
+      "type": "page",
+      "file": "scaffolds/nextjs/files/app/(marketing)/contacto/page.tsx",
+      "title": "Contacto",
+      "risk": "bajo"
+    },
+    {
+      "route": "/crm",
+      "type": "page",
+      "file": "app/(app)/crm/page.tsx",
+      "title": "Crm",
+      "risk": "bajo"
+    },
+    {
+      "route": "/crm/oportunidades",
+      "type": "page",
+      "file": "app/(app)/crm/oportunidades/page.tsx",
+      "title": "Oportunidades",
+      "risk": "alto"
+    },
+    {
+      "route": "/crm/oportunidades/:id",
+      "type": "page",
+      "file": "app/(app)/crm/oportunidades/[id]/page.tsx",
+      "title": "${opportunityStatusLabels[opportunity.status]} · ${opportunity.contact_name ?? opportunity.contact_email ??",
+      "risk": "alto"
+    },
+    {
+      "route": "/crm/oportunidades/:id/edit",
+      "type": "page",
+      "file": "app/(app)/crm/oportunidades/[id]/edit/page.tsx",
+      "title": "Editar ${opportunity.company_name}",
+      "risk": "alto"
+    },
+    {
+      "route": "/crm/oportunidades/nuevo",
+      "type": "page",
+      "file": "app/(app)/crm/oportunidades/nuevo/page.tsx",
+      "title": "Nueva oportunidad",
+      "risk": "medio"
+    },
+    {
+      "route": "/dashboard",
+      "type": "page",
+      "file": "app/(app)/dashboard/page.tsx",
+      "title": "Dashboard",
+      "risk": "bajo"
+    },
+    {
+      "route": "/dashboard",
+      "type": "page",
+      "file": "scaffolds/nextjs/files/app/(app)/dashboard/page.tsx",
+      "title": "Dashboard",
+      "risk": "bajo"
+    },
+    {
+      "route": "/estadisticas/facturacion",
+      "type": "page",
+      "file": "app/(app)/estadisticas/facturacion/page.tsx",
+      "title": "Estadisticas de facturacion",
+      "risk": "medio"
+    },
+    {
+      "route": "/estadisticas/facturacion/export/:kind",
+      "type": "api",
+      "file": "app/(app)/estadisticas/facturacion/export/[kind]/route.ts",
+      "title": "Estadisticas / Facturacion / Export / :Kind",
+      "risk": "medio"
+    },
+    {
+      "route": "/facturacion/aprobacion",
+      "type": "page",
+      "file": "app/(app)/facturacion/aprobacion/page.tsx",
+      "title": "Aprobacion de facturas",
+      "risk": "alto"
+    },
+    {
+      "route": "/facturacion/facturables",
+      "type": "page",
+      "file": "app/(app)/facturacion/facturables/page.tsx",
+      "title": "Facturables",
+      "risk": "medio"
+    },
+    {
+      "route": "/facturacion/facturables/:id",
+      "type": "page",
+      "file": "app/(app)/facturacion/facturables/[id]/page.tsx",
+      "title": "${facturable.description} · catálogo de conceptos facturables",
+      "risk": "medio"
+    },
+    {
+      "route": "/facturacion/facturables/:id/edit",
+      "type": "page",
+      "file": "app/(app)/facturacion/facturables/[id]/edit/page.tsx",
+      "title": "Editar ${facturable.code}",
+      "risk": "medio"
+    },
+    {
+      "route": "/facturacion/facturables/nuevo",
+      "type": "page",
+      "file": "app/(app)/facturacion/facturables/nuevo/page.tsx",
+      "title": "Nuevo facturable",
+      "risk": "medio"
+    },
+    {
+      "route": "/facturacion/facturas",
+      "type": "page",
+      "file": "app/(app)/facturacion/facturas/page.tsx",
+      "title": "Facturas",
+      "risk": "medio"
+    },
+    {
+      "route": "/facturacion/facturas/:id",
+      "type": "page",
+      "file": "app/(app)/facturacion/facturas/[id]/page.tsx",
+      "title": "${document.client_name} · ${formatDate(document.issue_date)}",
+      "risk": "medio"
+    },
+    {
+      "route": "/facturacion/facturas/:id/documentos/:documentId",
+      "type": "api",
+      "file": "app/(app)/facturacion/facturas/[id]/documentos/[documentId]/route.ts",
+      "title": "Facturacion / Facturas / :Id / Documentos / :DocumentId",
+      "risk": "medio"
+    },
+    {
+      "route": "/facturacion/facturas/:id/pdf",
+      "type": "api",
+      "file": "app/(print)/facturacion/facturas/[id]/pdf/route.ts",
+      "title": "Facturacion / Facturas / :Id / Pdf",
+      "risk": "medio"
+    },
+    {
+      "route": "/facturacion/facturas/:id/plantilla",
+      "type": "page",
+      "file": "app/(print)/facturacion/facturas/[id]/plantilla/page.tsx",
+      "title": "Facturacion / Facturas / :Id / Plantilla",
+      "risk": "medio"
+    },
+    {
+      "route": "/facturacion/proformas",
+      "type": "page",
+      "file": "app/(app)/facturacion/proformas/page.tsx",
+      "title": "Proformas",
+      "risk": "medio"
+    },
+    {
+      "route": "/facturacion/proformas/:id",
+      "type": "page",
+      "file": "app/(app)/facturacion/proformas/[id]/page.tsx",
+      "title": "${document.client_name} · ${formatDate(document.issue_date)}",
+      "risk": "medio"
+    },
+    {
+      "route": "/facturacion/proformas/:id/documentos/:documentId",
+      "type": "api",
+      "file": "app/(app)/facturacion/proformas/[id]/documentos/[documentId]/route.ts",
+      "title": "Facturacion / Proformas / :Id / Documentos / :DocumentId",
+      "risk": "medio"
+    },
+    {
+      "route": "/facturacion/proformas/:id/pdf",
+      "type": "api",
+      "file": "app/(print)/facturacion/proformas/[id]/pdf/route.ts",
+      "title": "Facturacion / Proformas / :Id / Pdf",
+      "risk": "medio"
+    },
+    {
+      "route": "/facturacion/proformas/:id/plantilla",
+      "type": "page",
+      "file": "app/(print)/facturacion/proformas/[id]/plantilla/page.tsx",
+      "title": "Facturacion / Proformas / :Id / Plantilla",
+      "risk": "medio"
+    },
+    {
+      "route": "/facturacion/proformas/nuevo",
+      "type": "page",
+      "file": "app/(app)/facturacion/proformas/nuevo/page.tsx",
+      "title": "Nueva proforma",
+      "risk": "medio"
+    },
+    {
+      "route": "/facturacion/suscripciones",
+      "type": "page",
+      "file": "app/(app)/facturacion/suscripciones/page.tsx",
+      "title": "Suscripciones",
+      "risk": "medio"
+    },
+    {
+      "route": "/facturacion/suscripciones/:id",
+      "type": "page",
+      "file": "app/(app)/facturacion/suscripciones/[id]/page.tsx",
+      "title": "${subscription.subscription_code} · ${subscription.description}",
+      "risk": "medio"
+    },
+    {
+      "route": "/facturacion/suscripciones/:id/edit",
+      "type": "page",
+      "file": "app/(app)/facturacion/suscripciones/[id]/edit/page.tsx",
+      "title": "Editar ${subscription.subscription_code}",
+      "risk": "medio"
+    },
+    {
+      "route": "/facturacion/suscripciones/nuevo",
+      "type": "page",
+      "file": "app/(app)/facturacion/suscripciones/nuevo/page.tsx",
+      "title": "Nueva suscripcion",
+      "risk": "medio"
+    },
+    {
+      "route": "/gastos/individuales",
+      "type": "page",
+      "file": "app/(app)/gastos/individuales/page.tsx",
+      "title": "Gastos individuales",
+      "risk": "medio"
+    },
+    {
+      "route": "/gastos/individuales/:id",
+      "type": "page",
+      "file": "app/(app)/gastos/individuales/[id]/page.tsx",
+      "title": "${expense.invoice_number} · ${expense.supplier_name}",
+      "risk": "alto"
+    },
+    {
+      "route": "/gastos/individuales/:id/documentos/:documentId",
+      "type": "api",
+      "file": "app/(app)/gastos/individuales/[id]/documentos/[documentId]/route.ts",
+      "title": "Gastos / Individuales / :Id / Documentos / :DocumentId",
+      "risk": "medio"
+    },
+    {
+      "route": "/gastos/individuales/:id/edit",
+      "type": "page",
+      "file": "app/(app)/gastos/individuales/[id]/edit/page.tsx",
+      "title": "Editar ${expense.invoice_number}",
+      "risk": "alto"
+    },
+    {
+      "route": "/gastos/individuales/nuevo",
+      "type": "page",
+      "file": "app/(app)/gastos/individuales/nuevo/page.tsx",
+      "title": "Nuevo gasto individual",
+      "risk": "alto"
+    },
+    {
+      "route": "/gastos/recepcion",
+      "type": "page",
+      "file": "app/(app)/gastos/recepcion/page.tsx",
+      "title": "Recepcion de facturas",
+      "risk": "alto"
+    },
+    {
+      "route": "/gastos/recepcion/:id",
+      "type": "page",
+      "file": "app/(app)/gastos/recepcion/[id]/page.tsx",
+      "title": "${invoiceIntakeStatusLabels[item.status]} · ${invoiceIntakeSourceLabels[item.source_kind]}",
+      "risk": "alto"
+    },
+    {
+      "route": "/gastos/recepcion/:id/documentos/:documentId",
+      "type": "api",
+      "file": "app/(app)/gastos/recepcion/[id]/documentos/[documentId]/route.ts",
+      "title": "Gastos / Recepcion / :Id / Documentos / :DocumentId",
+      "risk": "alto"
+    },
+    {
+      "route": "/integraciones/microsoft/callback",
+      "type": "api",
+      "file": "app/integraciones/microsoft/callback/route.ts",
+      "title": "Integraciones / Microsoft / Callback",
+      "risk": "alto"
+    },
+    {
+      "route": "/integraciones/microsoft/connect",
+      "type": "api",
+      "file": "app/integraciones/microsoft/connect/route.ts",
+      "title": "Integraciones / Microsoft / Connect",
+      "risk": "alto"
+    },
+    {
+      "route": "/perfil",
+      "type": "page",
+      "file": "app/(app)/perfil/page.tsx",
+      "title": "Mi perfil",
+      "risk": "alto"
+    },
+    {
+      "route": "/proveedores",
+      "type": "page",
+      "file": "app/(app)/proveedores/page.tsx",
+      "title": "Proveedores",
+      "risk": "medio"
+    },
+    {
+      "route": "/proveedores/:id",
+      "type": "page",
+      "file": "app/(app)/proveedores/[id]/page.tsx",
+      "title": "${supplier.tax_id} · ficha operativa del proveedor",
+      "risk": "alto"
+    },
+    {
+      "route": "/proveedores/:id/edit",
+      "type": "page",
+      "file": "app/(app)/proveedores/[id]/edit/page.tsx",
+      "title": "Editar ${supplier.name}",
+      "risk": "alto"
+    },
+    {
+      "route": "/proveedores/nuevo",
+      "type": "page",
+      "file": "app/(app)/proveedores/nuevo/page.tsx",
+      "title": "Nuevo proveedor",
+      "risk": "alto"
+    },
+    {
+      "route": "/settings",
+      "type": "page",
+      "file": "app/(app)/settings/page.tsx",
+      "title": "Configuracion",
+      "risk": "alto"
+    },
+    {
+      "route": "/settings",
+      "type": "page",
+      "file": "scaffolds/nextjs/files/app/(app)/settings/page.tsx",
+      "title": "Ajustes",
+      "risk": "bajo"
+    },
+    {
+      "route": "/usuarios",
+      "type": "page",
+      "file": "app/(app)/usuarios/page.tsx",
+      "title": "Usuarios",
+      "risk": "alto"
+    },
+    {
+      "route": "/usuarios/:id",
+      "type": "page",
+      "file": "app/(app)/usuarios/[id]/page.tsx",
+      "title": "Ficha de usuario en lectura. Roles y baja se cambian desde edición.",
+      "risk": "alto"
+    },
+    {
+      "route": "/usuarios/:id/edit",
+      "type": "page",
+      "file": "app/(app)/usuarios/[id]/edit/page.tsx",
+      "title": "Editar ${user.displayName}",
+      "risk": "alto"
+    },
+    {
+      "route": "/usuarios/nuevo",
+      "type": "page",
+      "file": "app/(app)/usuarios/nuevo/page.tsx",
+      "title": "Nuevo usuario",
+      "risk": "alto"
+    }
+  ],
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "postinstall": "PLAYWRIGHT_BROWSERS_PATH=0 playwright install chromium",
+    "start": "next start",
+    "lint": "eslint",
+    "test:billing-approval": "node tools/test_billing_approval_amounts.mjs",
+    "test:mail-recipients": "node tools/test_mail_recipients.mjs",
+    "test:invoice-intake": "node tools/test_invoice_intake_extraction.mjs",
+    "audit:ui-system": "python tools/ui_system_audit.py --root . --report MERGE_AUDIT_REPORT.md",
+    "audit:billing-pdf": "node tools/audit_billing_pdf.mjs",
+    "audit:visual": "npm run audit:ui-system && npm run audit:billing-pdf",
+    "auth:master": "node tools/bootstrap_master_user.mjs",
+    "sharepoint:export": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/sharepoint_export.ps1",
+    "sharepoint:graph-export": "node tools/sharepoint_graph_export.mjs",
+    "sharepoint:sql": "python tools/sharepoint_generate_sql.py --export-dir .sharepoint-export",
+    "sharepoint:import": "node tools/sharepoint_import.mjs --export-dir .sharepoint-export",
+    "sharepoint:import:clients": "node tools/sharepoint_import_clients.mjs --export-dir .sharepoint-export",
+    "sharepoint:import:facturables": "node tools/sharepoint_import_facturables.mjs --export-dir .sharepoint-export",
+    "sharepoint:import:billing": "node tools/sharepoint_import_billing_documents.mjs --export-dir .sharepoint-export",
+    "sharepoint:import:subscriptions": "node tools/sharepoint_import_subscriptions.mjs --export-dir .sharepoint-export",
+    "sharepoint:import:suppliers": "node tools/sharepoint_import_suppliers.mjs --export-dir .sharepoint-export",
+    "sharepoint:import:expense-individuals": "node tools/sharepoint_import_expense_individuals.mjs --export-dir .sharepoint-export",
+    "sharepoint:import:crm-opportunities": "node tools/sharepoint_import_crm_opportunities.mjs --export-dir .sharepoint-export",
+    "sharepoint:import:all": "npm run sharepoint:import:clients && npm run sharepoint:import:facturables && npm run sharepoint:import:subscriptions && npm run sharepoint:import:billing && npm run sharepoint:import:suppliers && npm run sharepoint:import:expense-individuals && npm run sharepoint:import:crm-opportunities",
+    "sharepoint:binaries:download": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/sharepoint_download_binaries.ps1 -OutDir .sharepoint-export",
+    "sharepoint:binaries:upload": "node tools/sharepoint_upload_binaries.mjs --export-dir .sharepoint-export",
+    "sharepoint:binaries:all": "npm run sharepoint:binaries:download -- -Force && npm run sharepoint:binaries:upload -- --dry-run && npm run sharepoint:binaries:upload",
+    "sharepoint:billing-pdfs:download": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/sharepoint_download_binaries.ps1 -OutDir .sharepoint-export -AuthMode DeviceLogin -Force -ListId 918d3f77-aa39-4e86-8b1a-831aef7ad68c -Extensions .pdf",
+    "sharepoint:billing-pdfs:upload:dry-run": "node tools/sharepoint_upload_binaries.mjs --export-dir .sharepoint-export --local-dir .sharepoint-export/binaries --list-id 918d3f77-aa39-4e86-8b1a-831aef7ad68c --extensions .pdf --dry-run",
+    "sharepoint:billing-pdfs:upload": "node tools/sharepoint_upload_binaries.mjs --export-dir .sharepoint-export --local-dir .sharepoint-export/binaries --list-id 918d3f77-aa39-4e86-8b1a-831aef7ad68c --extensions .pdf --continue-on-error",
+    "sharepoint:billing-pdfs:all": "npm run sharepoint:billing-pdfs:download && npm run sharepoint:billing-pdfs:upload:dry-run && npm run sharepoint:billing-pdfs:upload",
+    "cron:monthly-invoices": "node scripts/run-monthly-invoices-cron.mjs"
+  },
+  "enrichment": {
+    "engine": "hybrid",
+    "status": "ok",
+    "error": null
+  }
+}
