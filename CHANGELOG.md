@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-06-07
+- Handled revoked Supabase SSR refresh-token cookies in `proxy.ts` to avoid production `refresh_token_not_found` runtime logs.
+- Adjusted Microsoft Graph inbox PDF import query to satisfy message `$filter`/`$orderby` constraints and added a defensive fallback.
+
 ## 2026-05-26
 - Prepared Coolify deployment for `ges.corteapp.es`.
 - Added a guarded monthly invoices cron runner for Coolify scheduled tasks.

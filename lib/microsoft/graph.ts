@@ -126,6 +126,7 @@ type GraphMailMessage = {
   id?: string
   subject?: string | null
   receivedDateTime?: string | null
+  hasAttachments?: boolean | null
   from?: {
     emailAddress?: {
       address?: string | null
@@ -595,6 +596,50 @@ function isPdfAttachment(attachment: GraphFileAttachment) {
   return !attachment.isInline && (name.endsWith(".pdf") || contentType.includes("pdf"))
 }
 
+function graphMailMessageParams(top: number, filterAttachments: boolean) {
+  const params = new URLSearchParams({
+    "$top": String(top),
+    "$select": "id,subject,from,receivedDateTime,hasAttachments",
+    "$orderby": "receivedDateTime desc",
+  })
+
+  if (filterAttachments) {
+    // Graph requires ordered message fields to appear first in $filter.
+    params.set("$filter", "receivedDateTime ge 1900-01-01T00:00:00Z and hasAttachments eq true")
+  }
+
+  return params
+}
+
+function isGraphInefficientFilterError(error: unknown) {
+  return error instanceof Error && error.message.includes("InefficientFilter")
+}
+
+async function listRecentInboxMessages(
+  accessToken: string,
+  basePath: string,
+  top: number,
+): Promise<GraphCollection<GraphMailMessage>> {
+  const filteredParams = graphMailMessageParams(top, true)
+
+  try {
+    return await graphFetch<GraphCollection<GraphMailMessage>>(
+      accessToken,
+      `${basePath}/mailFolders/inbox/messages?${filteredParams.toString()}`,
+    )
+  } catch (error) {
+    if (!isGraphInefficientFilterError(error)) {
+      throw error
+    }
+
+    const fallbackParams = graphMailMessageParams(Math.min(top * 2, 50), false)
+    return graphFetch<GraphCollection<GraphMailMessage>>(
+      accessToken,
+      `${basePath}/mailFolders/inbox/messages?${fallbackParams.toString()}`,
+    )
+  }
+}
+
 export async function listMicrosoftPdfMailAttachmentsForUser(
   userId: string,
   input: { mailboxEmail?: string | null; maxMessages?: number } = {},
@@ -602,20 +647,11 @@ export async function listMicrosoftPdfMailAttachmentsForUser(
   const accessToken = await getMicrosoftAccessTokenForUser(userId)
   const top = Math.min(Math.max(input.maxMessages ?? 25, 1), 50)
   const basePath = mailboxBasePath(input.mailboxEmail)
-  const messageParams = new URLSearchParams({
-    "$top": String(top),
-    "$filter": "hasAttachments eq true",
-    "$select": "id,subject,from,receivedDateTime,hasAttachments",
-    "$orderby": "receivedDateTime desc",
-  })
-  const messages = await graphFetch<GraphCollection<GraphMailMessage>>(
-    accessToken,
-    `${basePath}/mailFolders/inbox/messages?${messageParams.toString()}`,
-  )
+  const messages = await listRecentInboxMessages(accessToken, basePath, top)
   const results: MicrosoftMailPdfAttachment[] = []
 
   for (const message of messages.value ?? []) {
-    if (!message.id) {
+    if (!message.id || message.hasAttachments === false) {
       continue
     }
 

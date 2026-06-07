@@ -138,3 +138,9 @@
 2. La credencial master canonica es la declarada en env (`user_master` / `user_master_password`); Coolify ejecuta `npm run auth:master` como post-deploy para evitar drift con Supabase Auth.
 3. `billing_subscriptions.recurring_total_amount` representa el importe recurrente final; la base imponible y el IVA se derivan al generar candidatos de aprobacion.
 4. Los correos de cobro pueden contener varios destinatarios separados por `;`, coma o salto de linea; antes de enviar por Microsoft Graph se normalizan a recipients individuales.
+
+## 2026-06-07
+
+1. El `proxy.ts` de Supabase SSR limpia cookies `sb-...-auth-token` solo ante `refresh_token_not_found`; no cambia sesiones validas ni permisos.
+2. La lectura de PDFs desde inbox Microsoft Graph mantiene orden por `receivedDateTime desc`, pero incluye esa propiedad primero en `$filter` para evitar `InefficientFilter`; si Graph sigue rechazando la consulta, reintenta sin filtro y filtra adjuntos en cliente.
+3. Este ajuste es backend/integracion: no se toca UI ni se introduce superficie visual nueva.
