@@ -1,6 +1,8 @@
 # Changelog
 
 ## 2026-06-08
+- Added a protected cron endpoint and Coolify runner for automatic gradual recovery of missing individual expense PDFs from Microsoft mail.
+- Added a guarded mail-based recovery tool for historical individual expenses whose legacy attachment flag exists but no PDF document row was imported.
 - Added `/api/health` as a lightweight no-secret health endpoint for Coolify/Codex Control deployment verification, bypassing the Supabase auth proxy.
 - Hardened expense invoice attachment intake with PDF signature validation, a 20 MB per-file limit, normalized PDF MIME storage, oversized Microsoft attachment skipping, and `nosniff` PDF delivery.
 

@@ -59,6 +59,14 @@ sudo docker exec coolify-db sh -lc 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -
 - Las variables runtime esperadas existen dentro del contenedor cuando aplique, por ejemplo `user_master` y `user_master_password`, siempre comprobadas sin imprimir valores.
 - La ruta de Coolify de la app no devuelve `500`; sin sesion debe redirigir a login.
 
+## Tareas programadas
+
+- Generacion mensual de candidatos de facturacion: `npm run cron:monthly-invoices`.
+- Recuperacion gradual de PDFs historicos de gastos individuales desde correo: `npm run cron:expense-pdf-recovery`.
+- La recuperacion de PDFs usa `/api/cron/expenses/recover-pdfs-from-mail`, requiere `CRON_SECRET`, reutiliza el buzon asignado al modulo `expense_invoice_intake` y procesa por defecto lotes pequenos para evitar barridos agresivos de Microsoft Graph.
+- Para ensayar sin crear documentos: `npm run cron:expense-pdf-recovery -- --dry-run`.
+- Opciones no secretas utiles: `--limit N`, `--max-messages N`, `--match-mode invoice|balanced`, `--folder-id inbox`.
+
 ## Incidentes conocidos
 
 - Si Coolify muestra `The payload is invalid` al abrir la app `corteges`, revisar filas corruptas/no cifradas en `environment_variables` antes de desplegar.

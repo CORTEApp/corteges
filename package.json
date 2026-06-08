@@ -11,6 +11,7 @@
     "test:billing-approval": "node tools/test_billing_approval_amounts.mjs",
     "test:mail-recipients": "node tools/test_mail_recipients.mjs",
     "test:invoice-intake": "node tools/test_invoice_intake_extraction.mjs",
+    "expenses:recover-pdfs:mail": "node tools/recover_expense_pdfs_from_mail.mjs",
     "audit:ui-system": "python tools/ui_system_audit.py --root . --report MERGE_AUDIT_REPORT.md",
     "audit:billing-pdf": "node tools/audit_billing_pdf.mjs",
     "audit:visual": "npm run audit:ui-system && npm run audit:billing-pdf",
@@ -34,6 +35,7 @@
     "sharepoint:billing-pdfs:upload:dry-run": "node tools/sharepoint_upload_binaries.mjs --export-dir .sharepoint-export --local-dir .sharepoint-export/binaries --list-id 918d3f77-aa39-4e86-8b1a-831aef7ad68c --extensions .pdf --dry-run",
     "sharepoint:billing-pdfs:upload": "node tools/sharepoint_upload_binaries.mjs --export-dir .sharepoint-export --local-dir .sharepoint-export/binaries --list-id 918d3f77-aa39-4e86-8b1a-831aef7ad68c --extensions .pdf --continue-on-error",
     "sharepoint:billing-pdfs:all": "npm run sharepoint:billing-pdfs:download && npm run sharepoint:billing-pdfs:upload:dry-run && npm run sharepoint:billing-pdfs:upload",
+    "cron:expense-pdf-recovery": "node scripts/run-expense-pdf-recovery-cron.mjs",
     "cron:monthly-invoices": "node scripts/run-monthly-invoices-cron.mjs"
   },
   "dependencies": {
