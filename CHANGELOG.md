@@ -1,6 +1,7 @@
 # Changelog
 
 ## 2026-06-08
+- Allowed SharePoint expense PDF recovery to continue when auxiliary `sharepoint_import.binary_files` REST writes are unavailable.
 - Guarded the Microsoft connect route so missing files-consent configuration redirects cleanly instead of returning HTTP 500.
 - Synced linked subscription totals and pending approval snapshots when a facturable unit price changes.
 - Fixed subscription recurring amount calculation so base, IVA and total are derived from facturable unit price, quantity and VAT rate.

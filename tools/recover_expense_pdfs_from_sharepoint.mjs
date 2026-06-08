@@ -538,6 +538,7 @@ async function recoverAttachment({ supabase, config, accessToken, expense, attac
   }
 
   let binaryFileId = null
+  let inventorySkipped = false
   try {
     binaryFileId = await upsertBinaryInventory(supabase, {
       source_kind: 'list_attachment',
@@ -564,9 +565,8 @@ async function recoverAttachment({ supabase, config, accessToken, expense, attac
       downloaded_at: new Date().toISOString(),
       uploaded_at: new Date().toISOString(),
     })
-  } catch (error) {
-    await supabase.storage.from(EXPENSE_DOCUMENTS_BUCKET).remove([storagePath])
-    throw new Error(`binary_files inventory failed: ${error.message}`)
+  } catch {
+    inventorySkipped = true
   }
 
   const { error: insertError } = await supabase.from('expense_individual_documents').insert({
@@ -593,7 +593,7 @@ async function recoverAttachment({ supabase, config, accessToken, expense, attac
     throw new Error(insertError.message)
   }
 
-  return { status: 'recovered' }
+  return { status: 'recovered', inventorySkipped }
 }
 
 async function recoverExpensePdfsFromSharePoint(args = {}, envInput = process.env) {
@@ -617,6 +617,7 @@ async function recoverExpensePdfsFromSharePoint(args = {}, envInput = process.en
     would_recover: 0,
     recovered: 0,
     duplicate_hash: 0,
+    inventory_skipped: 0,
     invalid_pdf: 0,
     invalid_attachment: 0,
     no_sharepoint_source: 0,
@@ -649,6 +650,9 @@ async function recoverExpensePdfsFromSharePoint(args = {}, envInput = process.en
         const result = await recoverAttachment({ supabase, config, accessToken, expense, attachment })
         if (result.status === 'recovered') {
           summary.recovered += 1
+          if (result.inventorySkipped) {
+            summary.inventory_skipped += 1
+          }
         } else if (result.status === 'duplicate') {
           summary.duplicate_hash += 1
         } else if (result.status === 'invalid_pdf') {
@@ -679,6 +683,7 @@ function printSummary(summary) {
   console.log(`Would recover: ${summary.would_recover}`)
   console.log(`Recovered: ${summary.recovered}`)
   console.log(`Duplicate hashes skipped: ${summary.duplicate_hash}`)
+  console.log(`Inventory writes skipped: ${summary.inventory_skipped}`)
   console.log(`Invalid PDFs skipped: ${summary.invalid_pdf}`)
   console.log(`Invalid attachments skipped: ${summary.invalid_attachment}`)
   console.log(`No SharePoint source: ${summary.no_sharepoint_source}`)
