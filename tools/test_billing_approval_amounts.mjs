@@ -2,6 +2,7 @@
 import assert from "node:assert/strict"
 
 import { calculateApprovalLineAmounts } from "../lib/billing/approval-amounts.mjs"
+import { summarizeBillingDocumentLineAmounts } from "../lib/billing/document-amounts.mjs"
 
 function assertLineAmounts(input, expected) {
   const actual = calculateApprovalLineAmounts(input)
@@ -56,6 +57,18 @@ assertLineAmounts(
     totalAmount: 83.45,
     unitPrice: 16.69,
     vatRate: 0,
+  },
+)
+
+assert.deepEqual(
+  summarizeBillingDocumentLineAmounts([
+    { subtotal_amount: 100, tax_amount: 21, total_amount: 121 },
+    { subtotal_amount: "50.25", tax_amount: "10.55", total_amount: "60.8" },
+  ]),
+  {
+    subtotalAmount: 150.25,
+    taxAmount: 31.55,
+    totalAmount: 181.8,
   },
 )
 

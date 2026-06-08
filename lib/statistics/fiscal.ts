@@ -389,6 +389,13 @@ function mapIncome(row: {
   status: string
   payment_status: string
 }): FiscalIncomeRow {
+  const subtotalAmount = roundMoney(toNumber(row.subtotal_amount))
+  const totalAmount = roundMoney(toNumber(row.total_amount))
+  const storedTaxAmount = roundMoney(toNumber(row.tax_amount))
+  const balances = Math.abs(roundMoney(subtotalAmount + storedTaxAmount) - totalAmount) <= 0.02
+  const derivedTaxAmount = roundMoney(totalAmount - subtotalAmount)
+  const taxAmount = balances || derivedTaxAmount < 0 ? storedTaxAmount : derivedTaxAmount
+
   return {
     id: row.id,
     documentNumber: row.document_number,
@@ -396,9 +403,9 @@ function mapIncome(row: {
     clientTaxId: row.client_tax_id,
     project: row.project,
     issueDate: row.issue_date,
-    subtotalAmount: roundMoney(toNumber(row.subtotal_amount)),
-    taxAmount: roundMoney(toNumber(row.tax_amount)),
-    totalAmount: roundMoney(toNumber(row.total_amount)),
+    subtotalAmount,
+    taxAmount,
+    totalAmount,
     status: row.status,
     paymentStatus: row.payment_status,
   }

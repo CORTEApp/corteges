@@ -1,6 +1,7 @@
 # Changelog
 
 ## 2026-06-08
+- Recalculated billing document base, IVA and total from billing lines during SharePoint import and added an idempotent migration for existing documents.
 - Added a delegated Microsoft SharePoint file-consent flow for recovering expense PDFs from original list-item attachments.
 - Added a guarded SharePoint attachment recovery tool for remaining individual expense PDFs tied to the original SharePoint list item.
 - Added a PDF text inspection fallback to mail recovery so attachments can match historical expenses even when the invoice number is absent from the email subject or filename.

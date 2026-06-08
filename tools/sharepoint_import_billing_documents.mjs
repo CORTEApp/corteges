@@ -3,6 +3,8 @@ import { createClient } from '@supabase/supabase-js'
 import fs from 'node:fs'
 import path from 'node:path'
 
+import { summarizeBillingDocumentLineAmounts } from '../lib/billing/document-amounts.mjs'
+
 const ROOT = process.cwd()
 const FACTURAS_LIST_ID = '918d3f77-aa39-4e86-8b1a-831aef7ad68c'
 const TRABAJOS_LIST_ID = '0ef1a866-f25e-47de-97ec-fce8785067d6'
@@ -273,6 +275,32 @@ function mapTrabajoItem(item, { listId, siteId }) {
   }
 }
 
+function applyLineAmountSummaries(documents, lines) {
+  const linesByDocumentNumber = new Map()
+
+  for (const line of lines) {
+    const current = linesByDocumentNumber.get(line.source_document_number) ?? []
+    current.push(line)
+    linesByDocumentNumber.set(line.source_document_number, current)
+  }
+
+  return documents.map((document) => {
+    const documentLines = linesByDocumentNumber.get(document.document_number)
+    if (!documentLines?.length) {
+      return document
+    }
+
+    const summary = summarizeBillingDocumentLineAmounts(documentLines)
+
+    return {
+      ...document,
+      subtotal_amount: summary.subtotalAmount,
+      tax_amount: summary.taxAmount,
+      total_amount: summary.totalAmount,
+    }
+  })
+}
+
 function chunks(items, size) {
   const result = []
   for (let index = 0; index < items.length; index += size) {
@@ -453,6 +481,12 @@ async function main() {
   const sequences = mergeSequenceRows(sequenceRows(documentRows), proformaSequencesFromFacturaItems(facturaItems))
   const documentNumbers = new Set(documentRows.map((document) => document.document_number))
   const matchedLineRows = rawLineRows.filter((line) => documentNumbers.has(line.source_document_number))
+  const documentRowsWithLineTotals = applyLineAmountSummaries(documentRows, matchedLineRows)
+  const recalculatedDocumentCount = documentRowsWithLineTotals.filter((document, index) => (
+    document.subtotal_amount !== documentRows[index].subtotal_amount ||
+    document.tax_amount !== documentRows[index].tax_amount ||
+    document.total_amount !== documentRows[index].total_amount
+  )).length
 
   console.log(`Facturas source list: ${FACTURAS_LIST_ID}`)
   console.log(`Trabajos source list: ${TRABAJOS_LIST_ID}`)
@@ -461,6 +495,7 @@ async function main() {
   console.log(`SharePoint Trabajos items: ${trabajoItems.length}`)
   console.log(`Mapped billing lines: ${rawLineRows.length}`)
   console.log(`Lines matching imported documents: ${matchedLineRows.length}`)
+  console.log(`Documents recalculated from lines: ${recalculatedDocumentCount}`)
   if (matchedLineRows.length !== rawLineRows.length) {
     const missing = rawLineRows
       .filter((line) => !documentNumbers.has(line.source_document_number))
@@ -477,8 +512,8 @@ async function main() {
   }
 
   if (args['dry-run']) {
-    if (documentRows[0]) {
-      console.log(`First mapped document: ${JSON.stringify(documentRows[0], null, 2)}`)
+    if (documentRowsWithLineTotals[0]) {
+      console.log(`First mapped document: ${JSON.stringify(documentRowsWithLineTotals[0], null, 2)}`)
     }
     if (rawLineRows[0]) {
       console.log(`First mapped line: ${JSON.stringify(rawLineRows[0], null, 2)}`)
@@ -495,7 +530,7 @@ async function main() {
     auth: { persistSession: false, autoRefreshToken: false },
   })
   const clientsByTaxId = await fetchClientsByTaxId(supabase)
-  const documentRowsWithClients = documentRows.map((document) => ({
+  const documentRowsWithClients = documentRowsWithLineTotals.map((document) => ({
     ...document,
     client_id: document.client_tax_id ? clientsByTaxId.get(normalizeKey(document.client_tax_id)) ?? null : null,
   }))
