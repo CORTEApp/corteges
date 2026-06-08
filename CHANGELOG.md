@@ -1,6 +1,7 @@
 # Changelog
 
 ## 2026-06-08
+- Fixed Microsoft/Supabase auth redirects behind Coolify so production flows do not fall back to `localhost:3000`.
 - Recalculated billing document base, IVA and total from billing lines during SharePoint import and added an idempotent migration for existing documents.
 - Added a delegated Microsoft SharePoint file-consent flow for recovering expense PDFs from original list-item attachments.
 - Added a guarded SharePoint attachment recovery tool for remaining individual expense PDFs tied to the original SharePoint list item.

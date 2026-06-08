@@ -7,6 +7,7 @@ import {
   readMicrosoftProfileFromIdToken,
   saveMicrosoftConnection,
 } from "@/lib/microsoft/graph"
+import { getPublicOrigin } from "@/lib/public-origin"
 import { createClient } from "@/lib/supabase/server"
 
 const STATE_COOKIE = "corteges_ms_oauth_state"
@@ -21,7 +22,7 @@ function safeNext(raw: string | undefined) {
 }
 
 function redirectClearingCookies(request: NextRequest, next: string) {
-  const response = NextResponse.redirect(new URL(next, request.url))
+  const response = NextResponse.redirect(new URL(next, getPublicOrigin(request)))
   response.cookies.delete(STATE_COOKIE)
   response.cookies.delete(NEXT_COOKIE)
   response.cookies.delete(PURPOSE_COOKIE)
@@ -30,6 +31,7 @@ function redirectClearingCookies(request: NextRequest, next: string) {
 
 export async function GET(request: NextRequest) {
   const url = new URL(request.url)
+  const publicOrigin = getPublicOrigin(request)
   const next = safeNext(request.cookies.get(NEXT_COOKIE)?.value)
   const state = url.searchParams.get("state")
   const expectedState = request.cookies.get(STATE_COOKIE)?.value
@@ -51,7 +53,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const token = await exchangeMicrosoftAuthorizationCode(code, url.origin, purpose)
+    const token = await exchangeMicrosoftAuthorizationCode(code, publicOrigin, purpose)
     const profile = purpose === "files"
       ? readMicrosoftProfileFromIdToken(token.id_token)
       : await readMicrosoftProfile(token.access_token)

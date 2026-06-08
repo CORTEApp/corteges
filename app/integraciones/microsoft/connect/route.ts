@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto"
 import { NextRequest, NextResponse } from "next/server"
 
 import { buildMicrosoftAuthorizationUrl, isMicrosoftAuthorizationPurpose } from "@/lib/microsoft/graph"
+import { getPublicOrigin } from "@/lib/public-origin"
 import { createClient } from "@/lib/supabase/server"
 
 const STATE_COOKIE = "corteges_ms_oauth_state"
@@ -17,6 +18,7 @@ function safeNext(raw: string | null) {
 
 export async function GET(request: NextRequest) {
   const url = new URL(request.url)
+  const publicOrigin = getPublicOrigin(request)
   const next = safeNext(url.searchParams.get("next"))
   const requestedPurpose = url.searchParams.get("purpose")
   const purpose = isMicrosoftAuthorizationPurpose(requestedPurpose) ? requestedPurpose : "graph"
@@ -26,11 +28,11 @@ export async function GET(request: NextRequest) {
   } = await supabase.auth.getUser()
 
   if (!user) {
-    return NextResponse.redirect(new URL(`/auth/login?next=${encodeURIComponent(next)}`, url.origin))
+    return NextResponse.redirect(new URL(`/auth/login?next=${encodeURIComponent(next)}`, publicOrigin))
   }
 
   const state = randomBytes(24).toString("base64url")
-  const authUrl = buildMicrosoftAuthorizationUrl(url.origin, state, purpose)
+  const authUrl = buildMicrosoftAuthorizationUrl(publicOrigin, state, purpose)
   const response = NextResponse.redirect(authUrl)
   const cookieOptions = {
     httpOnly: true,

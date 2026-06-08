@@ -163,10 +163,33 @@ function envValue(...keys: string[]) {
   return ""
 }
 
+function isLocalOrigin(value: string) {
+  if (!value) {
+    return false
+  }
+
+  try {
+    const hostname = new URL(value).hostname
+    return (
+      hostname === "localhost"
+      || hostname === "127.0.0.1"
+      || hostname === "0.0.0.0"
+      || hostname.startsWith("10.")
+      || hostname.startsWith("192.168.")
+      || /^172\.(1[6-9]|2\d|3[0-1])\./.test(hostname)
+    )
+  } catch {
+    return false
+  }
+}
+
 export function getMicrosoftGraphConfig(origin?: string) {
   const redirectPath = envValue("MICROSOFT_GRAPH_REDIRECT_PATH") || DEFAULT_REDIRECT_PATH
   const redirectBaseUrl = envValue("MICROSOFT_GRAPH_REDIRECT_BASE_URL")
-  const baseUrl = redirectBaseUrl || origin || ""
+  const shouldUseRequestOrigin = Boolean(
+    origin && redirectBaseUrl && isLocalOrigin(redirectBaseUrl) && !isLocalOrigin(origin),
+  )
+  const baseUrl = shouldUseRequestOrigin && origin ? origin : redirectBaseUrl || origin || ""
   const normalizedBase = baseUrl.replace(/\/$/, "")
 
   return {

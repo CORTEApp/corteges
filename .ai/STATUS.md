@@ -16,6 +16,7 @@
 - expense_invoice_intake_recognition: `stripe_international_v2_remote_reprocessed`
 - expense_pdf_mail_recovery: `guarded_cron_tool_ready_for_legacy_attachment_gaps`
 - expense_pdf_sharepoint_recovery: `delegated_files_consent_flow_ready`
+- public_auth_redirects: `coolify_origin_resolver_ready`
 - supplier_auto_approval: `remote_applied_default_off_confirm_historical_extracted`
 - full_screen_loading: `atlas_delay_300ms_routes_and_blocking_actions`
 - form_header_actions: `persistent_forms_save_back_in_headers`
