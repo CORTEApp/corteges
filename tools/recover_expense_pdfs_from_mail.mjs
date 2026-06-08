@@ -4,6 +4,7 @@ import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID }
 import fs from 'node:fs'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
+import pdfParse from 'pdf-parse/lib/pdf-parse.js'
 
 const ROOT = process.cwd()
 const DEFAULT_GRAPH_BASE_URL = 'https://graph.microsoft.com/v1.0'
@@ -13,6 +14,12 @@ const EXPENSE_DOCUMENTS_BUCKET = 'expense-documents'
 const MAX_PDF_BYTES = 20 * 1024 * 1024
 const TOKEN_PREFIX = 'v1'
 const PDF_SIGNATURE = Buffer.from('%PDF-')
+const PDF_PARSE_NOISY_WARNING_PATTERN = /^Warning: TT: /
+const MICROSOFT_GRAPH_RECOVERY_SCOPES = [
+  'offline_access',
+  'Mail.Read',
+  'Mail.Read.Shared',
+].join(' ')
 const MICROSOFT_GRAPH_MAIL_SCOPE_REQUIREMENTS = [
   { scope: 'Mail.Read', grants: ['Mail.Read', 'Mail.ReadWrite'] },
   { scope: 'Mail.Read.Shared', grants: ['Mail.Read.Shared', 'Mail.ReadWrite.Shared'] },
@@ -81,11 +88,15 @@ Options:
   --connection-user-id <uuid>  Use a Microsoft connection directly.
   --mailbox-email <email>      Search this mailbox. Defaults to the selected outbox email or /me.
   --module <name>              Module outbox to use. Defaults to ${DEFAULT_MODULE}.
-  --folder-id <id>             Mail folder to scan. Defaults to inbox.
+  --folder-id <id>             Mail folder to scan. Defaults to all. Use inbox/sentitems to restrict.
   --days-before <number>       Search window before expense date. Defaults to 45.
   --days-after <number>        Search window after expense date. Defaults to 120.
   --max-messages <number>      Max messages to scan per expense. Defaults to 150.
+  --max-pdf-text-inspections <number>
+                                Max PDFs to parse per expense after metadata matching fails. Defaults to 25.
   --match-mode <mode>          invoice or balanced. Defaults to invoice.
+  --candidate-order <mode>     random, newest or oldest. Defaults to random.
+  --no-inspect-pdf-text        Disable PDF text inspection fallback.
   --continue-on-error          Continue after an expense-level recovery error.
 
 The script never prints secret values or email contents. Dry-run does not upload files or write rows.
@@ -208,6 +219,8 @@ function sanitizeProviderError(value) {
   return String(value ?? '')
     .replace(/Bearer\s+[A-Za-z0-9._~+/=-]+/gi, 'Bearer [redacted]')
     .replace(/refresh_token=[^&\s]+/gi, 'refresh_token=[redacted]')
+    .replace(/Invalid key:\s*[^\s]+/gi, 'Invalid key: [redacted]')
+    .replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/mail\/[^\s]+/gi, '[storage-key-redacted]')
     .slice(0, 700)
 }
 
@@ -290,6 +303,23 @@ function missingMailScopes(scopes) {
     .map((requirement) => requirement.scope)
 }
 
+function mergeScopes(...scopeGroups) {
+  const result = []
+  const seen = new Set()
+  for (const scope of scopeGroups.flatMap((group) => String(group ?? '').split(/\s+/))) {
+    const trimmed = scope.trim()
+    if (!trimmed) {
+      continue
+    }
+    const normalized = trimmed.toLowerCase()
+    if (!seen.has(normalized)) {
+      seen.add(normalized)
+      result.push(trimmed)
+    }
+  }
+  return result
+}
+
 async function getAccessTokenForUser(env, supabase, userId, { persistRefresh } = { persistRefresh: true }) {
   const connection = await getMicrosoftConnection(supabase, userId)
   const token = await requestToken(
@@ -299,6 +329,7 @@ async function getAccessTokenForUser(env, supabase, userId, { persistRefresh } =
       client_secret: getMicrosoftGraphConfig(env).clientSecret,
       grant_type: 'refresh_token',
       refresh_token: decryptRefreshToken(env, connection.refresh_token_encrypted),
+      scope: MICROSOFT_GRAPH_RECOVERY_SCOPES,
     }),
   )
 
@@ -307,9 +338,7 @@ async function getAccessTokenForUser(env, supabase, userId, { persistRefresh } =
       .from('microsoft_user_connections')
       .update({
         ...(token.refresh_token ? { refresh_token_encrypted: encryptRefreshToken(env, token.refresh_token) } : {}),
-        scopes: String(token.scope ?? (connection.scopes ?? []).join(' '))
-          .split(/\s+/)
-          .filter(Boolean),
+        scopes: mergeScopes((connection.scopes ?? []).join(' '), token.scope ?? MICROSOFT_GRAPH_RECOVERY_SCOPES),
         status: 'connected',
         last_error: null,
         last_refreshed_at: new Date().toISOString(),
@@ -360,11 +389,22 @@ function supplierTokens(value) {
 }
 
 function safeFileName(value) {
-  const cleaned = String(value ?? 'factura.pdf')
-    .replace(/[<>:"/\\|?*\u0000-\u001F]/g, '_')
-    .replace(/\s+/g, ' ')
-    .trim()
-  return cleaned || 'factura.pdf'
+  const parsed = path.parse(String(value ?? 'factura.pdf'))
+  const base = String(parsed.name || 'factura')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^A-Za-z0-9._-]+/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/^[._-]+|[._-]+$/g, '')
+    .slice(0, 120)
+  const extension = String(parsed.ext || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^A-Za-z0-9.]/g, '')
+    .toLowerCase()
+    .slice(0, 12)
+
+  return `${base || 'factura'}${extension}`
 }
 
 function pdfFileName(value) {
@@ -378,6 +418,17 @@ function clampInt(value, fallback, min, max) {
     return fallback
   }
   return Math.min(Math.max(parsed, min), max)
+}
+
+function shuffle(values) {
+  const shuffled = [...values]
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1))
+    const current = shuffled[index]
+    shuffled[index] = shuffled[swapIndex]
+    shuffled[swapIndex] = current
+  }
+  return shuffled
 }
 
 function addDays(dateText, days) {
@@ -460,6 +511,78 @@ function scoreAttachment(expense, message, attachment, matchMode) {
   }
 }
 
+async function scoreAttachmentText(expense, buffer) {
+  const parsed = await parsePdfQuietly(buffer)
+  const text = String(parsed.text ?? '')
+  const haystack = normalizeKey(text)
+  const readable = normalizeText(text)
+  const invoice = normalizeInvoice(expense.invoice_number)
+  const taxId = normalizeKey(expense.supplier_tax_id)
+  const amount = normalizeAmount(expense.total_amount)
+  const tokens = supplierTokens(expense.supplier_name)
+
+  let score = 0
+  let invoiceMatched = false
+  let taxMatched = false
+  let amountMatched = false
+  let tokenMatches = 0
+
+  if (invoice && invoice.length >= 3 && haystack.includes(invoice)) {
+    invoiceMatched = true
+    score += 24
+  }
+
+  if (taxId && taxId.length >= 5 && haystack.includes(taxId)) {
+    taxMatched = true
+    score += 10
+  }
+
+  if (amount && amount.length >= 3 && haystack.includes(amount)) {
+    amountMatched = true
+    score += 4
+  }
+
+  for (const token of tokens) {
+    if (readable.includes(token)) {
+      tokenMatches += 1
+      score += 2
+    }
+  }
+
+  return {
+    accepted: invoiceMatched && (taxMatched || amountMatched || tokenMatches > 0 || invoice.length >= 6),
+    score,
+    invoiceMatched,
+    taxMatched,
+    amountMatched,
+    tokenMatches,
+  }
+}
+
+async function parsePdfQuietly(buffer) {
+  const originalLog = console.log
+  const originalWarn = console.warn
+  const originalError = console.error
+  const suppressNoisyPdfWarning = (writer) => (...values) => {
+    const message = values.map((value) => String(value)).join(' ')
+    if (PDF_PARSE_NOISY_WARNING_PATTERN.test(message)) {
+      return
+    }
+    writer(...values)
+  }
+
+  console.log = suppressNoisyPdfWarning(originalLog)
+  console.warn = suppressNoisyPdfWarning(originalWarn)
+  console.error = suppressNoisyPdfWarning(originalError)
+  try {
+    return await pdfParse(buffer)
+  } finally {
+    console.log = originalLog
+    console.warn = originalWarn
+    console.error = originalError
+  }
+}
+
 function messageParams(expense, options, filterAttachments) {
   const params = new URLSearchParams({
     '$top': String(Math.min(options.maxMessages, 50)),
@@ -483,9 +606,12 @@ function isGraphInefficientFilterError(error) {
 }
 
 async function listCandidateMessages(env, accessToken, basePath, expense, options) {
-  const folder = options.folderId || 'inbox'
+  const folder = options.folderId || 'all'
+  const messagesBasePath = folder === 'all'
+    ? `${basePath}/messages`
+    : `${basePath}/mailFolders/${encodeURIComponent(folder)}/messages`
   const buildPath = (filterAttachments) =>
-    `${basePath}/mailFolders/${encodeURIComponent(folder)}/messages?${messageParams(expense, options, filterAttachments).toString()}`
+    `${messagesBasePath}?${messageParams(expense, options, filterAttachments).toString()}`
 
   let nextLink = buildPath(true)
   let scanned = 0
@@ -650,8 +776,18 @@ async function loadMissingExpenseCandidates(supabase, args) {
   }
 
   const missing = (expenses ?? []).filter((expense) => !documentExpenseIds.has(expense.id))
+  const candidateOrder = String(optionValue(args, 'candidate-order', 'candidateOrder') || 'random')
+  if (!['random', 'newest', 'oldest'].includes(candidateOrder)) {
+    throw new Error('candidate-order debe ser random, newest u oldest.')
+  }
+
+  const ordered = candidateOrder === 'random'
+    ? shuffle(missing)
+    : candidateOrder === 'oldest'
+      ? [...missing].reverse()
+      : missing
   const limit = args.limit ? clampInt(args.limit, missing.length, 1, 5000) : missing.length
-  return missing.slice(0, limit)
+  return ordered.slice(0, limit)
 }
 
 async function findBestAttachment(env, accessToken, basePath, expense, options, summary) {
@@ -662,6 +798,7 @@ async function findBestAttachment(env, accessToken, basePath, expense, options, 
   }
 
   let best = null
+  const textInspectionCandidates = []
   for (const message of messages) {
     if (!message.id) {
       continue
@@ -681,6 +818,9 @@ async function findBestAttachment(env, accessToken, basePath, expense, options, 
 
       const score = scoreAttachment(expense, message, attachment, options.matchMode)
       if (!score.accepted) {
+        if (options.inspectPdfText) {
+          textInspectionCandidates.push({ message, attachment, score })
+        }
         continue
       }
 
@@ -690,11 +830,37 @@ async function findBestAttachment(env, accessToken, basePath, expense, options, 
     }
   }
 
+  if (!best && options.inspectPdfText && textInspectionCandidates.length > 0) {
+    textInspectionCandidates.sort((left, right) => right.score.score - left.score.score)
+    for (const candidate of textInspectionCandidates.slice(0, options.maxPdfTextInspections)) {
+      try {
+        const buffer = await fetchAttachmentBytes(env, accessToken, basePath, candidate.message.id, candidate.attachment.id)
+        if (!buffer || buffer.byteLength === 0 || buffer.byteLength > options.maxPdfBytes || !hasPdfSignature(buffer)) {
+          summary.invalid_pdf += 1
+          continue
+        }
+
+        summary.pdf_text_inspections += 1
+        const score = await scoreAttachmentText(expense, buffer)
+        if (!score.accepted) {
+          continue
+        }
+
+        summary.pdf_text_matches += 1
+        if (!best || score.score > best.score.score) {
+          best = { ...candidate, score, buffer }
+        }
+      } catch {
+        summary.pdf_text_parse_errors += 1
+      }
+    }
+  }
+
   return best
 }
 
 async function recoverAttachment(env, supabase, accessToken, basePath, expense, match, options) {
-  const buffer = await fetchAttachmentBytes(env, accessToken, basePath, match.message.id, match.attachment.id)
+  const buffer = match.buffer ?? await fetchAttachmentBytes(env, accessToken, basePath, match.message.id, match.attachment.id)
   if (!buffer || buffer.byteLength === 0) {
     return { status: 'invalid_pdf' }
   }
@@ -760,14 +926,23 @@ export async function recoverExpensePdfsFromMail(args = {}, envInput = process.e
   if (!['invoice', 'balanced'].includes(matchMode)) {
     throw new Error('match-mode debe ser invoice o balanced.')
   }
+  const candidateOrder = String(optionValue(args, 'candidate-order', 'candidateOrder') || 'random')
+  if (!['random', 'newest', 'oldest'].includes(candidateOrder)) {
+    throw new Error('candidate-order debe ser random, newest u oldest.')
+  }
 
   const options = {
     daysBefore: clampInt(optionValue(args, 'days-before', 'daysBefore'), 45, 0, 3650),
     daysAfter: clampInt(optionValue(args, 'days-after', 'daysAfter'), 120, 0, 3650),
     maxMessages: clampInt(optionValue(args, 'max-messages', 'maxMessages'), 150, 1, 1000),
+    maxPdfTextInspections: clampInt(optionValue(args, 'max-pdf-text-inspections', 'maxPdfTextInspections'), 25, 0, 250),
     maxPdfBytes: MAX_PDF_BYTES,
     matchMode,
-    folderId: String(optionValue(args, 'folder-id', 'folderId') || 'inbox').trim() || 'inbox',
+    candidateOrder,
+    folderId: String(optionValue(args, 'folder-id', 'folderId') || 'all').trim() || 'all',
+    inspectPdfText: optionValue(args, 'inspect-pdf-text', 'inspectPdfText') === false
+      ? false
+      : !optionFlag(args, 'no-inspect-pdf-text', 'noInspectPdfText'),
   }
 
   const supabase = createClient(resolveSupabaseUrl(env), resolveServiceKey(env), {
@@ -781,6 +956,7 @@ export async function recoverExpensePdfsFromMail(args = {}, envInput = process.e
   const candidates = await loadMissingExpenseCandidates(supabase, args)
   const summary = {
     mode: dryRun ? 'dry-run' : 'apply',
+    candidate_order: options.candidateOrder,
     missing_expense_candidates: candidates.length,
     messages_scanned: 0,
     pdf_attachments_seen: 0,
@@ -792,6 +968,9 @@ export async function recoverExpensePdfsFromMail(args = {}, envInput = process.e
     oversized: 0,
     no_match: 0,
     graph_filter_fallbacks: 0,
+    pdf_text_inspections: 0,
+    pdf_text_matches: 0,
+    pdf_text_parse_errors: 0,
     errors: 0,
   }
 
@@ -831,6 +1010,7 @@ export async function recoverExpensePdfsFromMail(args = {}, envInput = process.e
 
 function printSummary(summary) {
   console.log(`Mode: ${summary.mode}`)
+  console.log(`Candidate order: ${summary.candidate_order}`)
   console.log(`Missing expense candidates: ${summary.missing_expense_candidates}`)
   console.log(`Messages scanned: ${summary.messages_scanned}`)
   console.log(`PDF attachments seen: ${summary.pdf_attachments_seen}`)
@@ -842,6 +1022,9 @@ function printSummary(summary) {
   console.log(`Oversized PDFs skipped: ${summary.oversized}`)
   console.log(`No match: ${summary.no_match}`)
   console.log(`Graph filter fallbacks: ${summary.graph_filter_fallbacks}`)
+  console.log(`PDF text inspections: ${summary.pdf_text_inspections}`)
+  console.log(`PDF text matches: ${summary.pdf_text_matches}`)
+  console.log(`PDF text parse errors: ${summary.pdf_text_parse_errors}`)
   console.log(`Errors: ${summary.errors}`)
 }
 

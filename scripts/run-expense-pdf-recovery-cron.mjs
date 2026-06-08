@@ -8,8 +8,11 @@ function parseArgs(argv) {
     dryRun: false,
     limit: "",
     maxMessages: "",
+    maxPdfTextInspections: "",
     matchMode: "",
     folderId: "",
+    candidateOrder: "",
+    noInspectPdfText: false,
   };
 
   for (let index = 0; index < argv.length; index += 1) {
@@ -20,12 +23,18 @@ function parseArgs(argv) {
       args.limit = argv[++index] || "";
     } else if (arg === "--max-messages") {
       args.maxMessages = argv[++index] || "";
+    } else if (arg === "--max-pdf-text-inspections") {
+      args.maxPdfTextInspections = argv[++index] || "";
     } else if (arg === "--match-mode") {
       args.matchMode = argv[++index] || "";
     } else if (arg === "--folder-id") {
       args.folderId = argv[++index] || "";
+    } else if (arg === "--candidate-order") {
+      args.candidateOrder = argv[++index] || "";
+    } else if (arg === "--no-inspect-pdf-text") {
+      args.noInspectPdfText = true;
     } else if (arg === "--help" || arg === "-h") {
-      console.log("Usage: npm run cron:expense-pdf-recovery -- [--dry-run] [--limit N] [--max-messages N] [--match-mode invoice|balanced] [--folder-id inbox]");
+      console.log("Usage: npm run cron:expense-pdf-recovery -- [--dry-run] [--limit N] [--max-messages N] [--max-pdf-text-inspections N] [--match-mode invoice|balanced] [--folder-id all|inbox|sentitems] [--candidate-order random|newest|oldest] [--no-inspect-pdf-text]");
       process.exit(0);
     } else {
       throw new Error(`Unknown argument: ${arg}`);
@@ -47,6 +56,8 @@ function sanitizeBody(text) {
   return text
     .replace(/Bearer\s+[A-Za-z0-9._~+/=-]+/gi, "Bearer [redacted]")
     .replace(/refresh_token=[^&\s]+/gi, "refresh_token=[redacted]")
+    .replace(/Invalid key:\s*[^\s]+/gi, "Invalid key: [redacted]")
+    .replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/mail\/[^\s]+/gi, "[storage-key-redacted]")
     .replace(/\s+/g, " ")
     .slice(0, 1600);
 }
@@ -61,8 +72,11 @@ async function main() {
   if (args.dryRun) url.searchParams.set("dry_run", "1");
   if (args.limit) url.searchParams.set("limit", args.limit);
   if (args.maxMessages) url.searchParams.set("max_messages", args.maxMessages);
+  if (args.maxPdfTextInspections) url.searchParams.set("max_pdf_text_inspections", args.maxPdfTextInspections);
   if (args.matchMode) url.searchParams.set("match_mode", args.matchMode);
   if (args.folderId) url.searchParams.set("folder_id", args.folderId);
+  if (args.candidateOrder) url.searchParams.set("candidate_order", args.candidateOrder);
+  if (args.noInspectPdfText) url.searchParams.set("inspect_pdf_text", "0");
 
   const response = await fetch(url, {
     method: "GET",

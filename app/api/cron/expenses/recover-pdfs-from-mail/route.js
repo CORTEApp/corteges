@@ -7,12 +7,17 @@ const DEFAULT_LIMIT = 10
 const DEFAULT_MAX_MESSAGES = 150
 const DEFAULT_DAYS_BEFORE = 45
 const DEFAULT_DAYS_AFTER = 120
+const DEFAULT_FOLDER_ID = "all"
+const DEFAULT_MAX_PDF_TEXT_INSPECTIONS = 25
+const DEFAULT_CANDIDATE_ORDER = "random"
 
 function truncateError(error) {
   const message = error instanceof Error ? error.message : String(error || "No se pudo recuperar PDFs desde correo.")
   return message
     .replace(/Bearer\s+[A-Za-z0-9._~+/=-]+/gi, "Bearer [redacted]")
     .replace(/refresh_token=[^&\s]+/gi, "refresh_token=[redacted]")
+    .replace(/Invalid key:\s*[^\s]+/gi, "Invalid key: [redacted]")
+    .replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/mail\/[^\s]+/gi, "[storage-key-redacted]")
     .slice(0, 1200)
 }
 
@@ -47,7 +52,13 @@ export async function GET(request) {
     const url = new URL(request.url)
     const dryRun = boolParam(url.searchParams, "dry_run", "EXPENSE_PDF_RECOVERY_DRY_RUN", false)
     const matchMode = textParam(url.searchParams, "match_mode", "EXPENSE_PDF_RECOVERY_MATCH_MODE", "invoice")
-    const folderId = textParam(url.searchParams, "folder_id", "EXPENSE_PDF_RECOVERY_FOLDER_ID", "inbox")
+    const folderId = textParam(url.searchParams, "folder_id", "EXPENSE_PDF_RECOVERY_FOLDER_ID", DEFAULT_FOLDER_ID)
+    const candidateOrder = textParam(
+      url.searchParams,
+      "candidate_order",
+      "EXPENSE_PDF_RECOVERY_CANDIDATE_ORDER",
+      DEFAULT_CANDIDATE_ORDER,
+    )
     const result = await recoverExpensePdfsFromMail({
       apply: !dryRun,
       dryRun,
@@ -59,6 +70,14 @@ export async function GET(request) {
         DEFAULT_MAX_MESSAGES,
         1,
         500,
+      ),
+      maxPdfTextInspections: intParam(
+        url.searchParams,
+        "max_pdf_text_inspections",
+        "EXPENSE_PDF_RECOVERY_MAX_PDF_TEXT_INSPECTIONS",
+        DEFAULT_MAX_PDF_TEXT_INSPECTIONS,
+        0,
+        100,
       ),
       daysBefore: intParam(
         url.searchParams,
@@ -78,6 +97,8 @@ export async function GET(request) {
       ),
       matchMode,
       folderId,
+      candidateOrder,
+      inspectPdfText: boolParam(url.searchParams, "inspect_pdf_text", "EXPENSE_PDF_RECOVERY_INSPECT_PDF_TEXT", true),
       continueOnError: true,
     })
 

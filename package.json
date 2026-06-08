@@ -12,6 +12,7 @@
     "test:mail-recipients": "node tools/test_mail_recipients.mjs",
     "test:invoice-intake": "node tools/test_invoice_intake_extraction.mjs",
     "expenses:recover-pdfs:mail": "node tools/recover_expense_pdfs_from_mail.mjs",
+    "expenses:recover-pdfs:sharepoint": "node tools/recover_expense_pdfs_from_sharepoint.mjs",
     "audit:ui-system": "python tools/ui_system_audit.py --root . --report MERGE_AUDIT_REPORT.md",
     "audit:billing-pdf": "node tools/audit_billing_pdf.mjs",
     "audit:visual": "npm run audit:ui-system && npm run audit:billing-pdf",

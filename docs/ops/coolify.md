@@ -63,9 +63,12 @@ sudo docker exec coolify-db sh -lc 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -
 
 - Generacion mensual de candidatos de facturacion: `npm run cron:monthly-invoices`.
 - Recuperacion gradual de PDFs historicos de gastos individuales desde correo: `npm run cron:expense-pdf-recovery`.
-- La recuperacion de PDFs usa `/api/cron/expenses/recover-pdfs-from-mail`, requiere `CRON_SECRET`, reutiliza el buzon asignado al modulo `expense_invoice_intake` y procesa por defecto lotes pequenos para evitar barridos agresivos de Microsoft Graph.
+- La recuperacion de PDFs usa `/api/cron/expenses/recover-pdfs-from-mail`, requiere `CRON_SECRET`, reutiliza el buzon asignado al modulo `expense_invoice_intake`, busca por defecto en toda la mailbox (`folder_id=all`), rota candidatos pendientes (`candidate_order=random`), inspecciona texto de PDFs cuando los metadatos no bastan y procesa lotes pequenos para evitar barridos agresivos de Microsoft Graph.
 - Para ensayar sin crear documentos: `npm run cron:expense-pdf-recovery -- --dry-run`.
-- Opciones no secretas utiles: `--limit N`, `--max-messages N`, `--match-mode invoice|balanced`, `--folder-id inbox`.
+- Opciones no secretas utiles: `--limit N`, `--max-messages N`, `--max-pdf-text-inspections N`, `--match-mode invoice|balanced`, `--folder-id all|inbox|sentitems`, `--candidate-order random|newest|oldest`, `--no-inspect-pdf-text`.
+- Recuperacion puntual desde adjuntos SharePoint del item original de gasto: `npm run expenses:recover-pdfs:sharepoint -- --dry-run` y, si hay coincidencias, `npm run expenses:recover-pdfs:sharepoint -- --apply`.
+- La recuperacion desde SharePoint usa por defecto conexion delegada guardada en CORTE.App. Primero abrir `/integraciones/microsoft/connect?purpose=files&next=%2Fperfil%23integraciones` con sesion iniciada y conceder el permiso de archivos del sitio.
+- Si hace falta forzar el modo anterior app-only: `npm run expenses:recover-pdfs:sharepoint -- --dry-run --auth-mode app`. Ese modo requiere que la app configurada pueda leer el sitio por SharePoint REST con permisos de lectura de sitio.
 
 ## Incidentes conocidos
 

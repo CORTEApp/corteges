@@ -7,6 +7,9 @@ const DEFAULT_GRAPH_BASE_URL = "https://graph.microsoft.com/v1.0"
 const DEFAULT_TIME_ZONE = "Romance Standard Time"
 const DEFAULT_REDIRECT_PATH = "/integraciones/microsoft/callback"
 const TOKEN_PREFIX = "v1"
+const MICROSOFT_SHAREPOINT_FILE_SCOPE = "AllSites.Read"
+
+export type MicrosoftAuthorizationPurpose = "graph" | "files"
 
 export const MICROSOFT_GRAPH_SCOPES = [
   "openid",
@@ -32,12 +35,13 @@ type MicrosoftTokenPayload = {
   access_token: string
   refresh_token?: string
   expires_in?: number
+  id_token?: string
   scope?: string
   token_type?: string
 }
 
 type MicrosoftProfile = {
-  id: string
+  id?: string | null
   displayName?: string | null
   mail?: string | null
   userPrincipalName?: string | null
@@ -232,8 +236,102 @@ function decryptRefreshToken(value: string) {
   ]).toString("utf8")
 }
 
-function scopesText() {
-  return MICROSOFT_GRAPH_SCOPES.join(" ")
+export function isMicrosoftAuthorizationPurpose(value: string | null | undefined): value is MicrosoftAuthorizationPurpose {
+  return value === "graph" || value === "files"
+}
+
+function getSharePointFileScope() {
+  const siteUrl = envValue("SHAREPOINT_SITE_URL")
+  if (!siteUrl) {
+    throw new Error("Microsoft SharePoint no esta configurado: falta SHAREPOINT_SITE_URL.")
+  }
+
+  return `${new URL(siteUrl).origin}/${MICROSOFT_SHAREPOINT_FILE_SCOPE}`
+}
+
+export function getMicrosoftSharePointFileScope() {
+  return getSharePointFileScope()
+}
+
+function scopeListForPurpose(purpose: MicrosoftAuthorizationPurpose = "graph") {
+  if (purpose === "files") {
+    return [
+      "openid",
+      "profile",
+      "email",
+      "offline_access",
+      getSharePointFileScope(),
+    ]
+  }
+
+  return MICROSOFT_GRAPH_SCOPES
+}
+
+function scopesText(purpose: MicrosoftAuthorizationPurpose = "graph") {
+  return scopeListForPurpose(purpose).join(" ")
+}
+
+function splitScopes(value: string | string[] | null | undefined) {
+  if (Array.isArray(value)) {
+    return value.map((scope) => String(scope).trim()).filter(Boolean)
+  }
+
+  return String(value ?? "")
+    .split(/\s+/)
+    .map((scope) => scope.trim())
+    .filter(Boolean)
+}
+
+function mergeScopes(...scopeGroups: Array<string | string[] | null | undefined>) {
+  const result: string[] = []
+  const seen = new Set<string>()
+  for (const scope of scopeGroups.flatMap(splitScopes)) {
+    const normalized = scope.toLowerCase()
+    if (!seen.has(normalized)) {
+      seen.add(normalized)
+      result.push(scope)
+    }
+  }
+  return result
+}
+
+function decodeJwtPayload(token: string) {
+  const [, payload] = token.split(".")
+  if (!payload) {
+    return null
+  }
+
+  try {
+    return JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as Record<string, unknown>
+  } catch {
+    return null
+  }
+}
+
+export function readMicrosoftProfileFromIdToken(idToken: string | undefined) {
+  if (!idToken) {
+    return null
+  }
+
+  const claims = decodeJwtPayload(idToken)
+  if (!claims) {
+    return null
+  }
+
+  const email = typeof claims.preferred_username === "string"
+    ? claims.preferred_username
+    : typeof claims.email === "string"
+      ? claims.email
+      : typeof claims.upn === "string"
+        ? claims.upn
+        : null
+
+  return {
+    id: typeof claims.oid === "string" ? claims.oid : typeof claims.sub === "string" ? claims.sub : null,
+    displayName: typeof claims.name === "string" ? claims.name : null,
+    mail: email,
+    userPrincipalName: email,
+  } satisfies MicrosoftProfile
 }
 
 async function requestToken(body: URLSearchParams, origin?: string): Promise<MicrosoftTokenPayload> {
@@ -301,20 +399,28 @@ function reconnectForMailScopesMessage(missing: readonly string[]) {
   return `Reconecta Microsoft para conceder permisos de correo: ${missing.join(", ")}.`
 }
 
-export function buildMicrosoftAuthorizationUrl(origin: string, state: string) {
+export function buildMicrosoftAuthorizationUrl(
+  origin: string,
+  state: string,
+  purpose: MicrosoftAuthorizationPurpose = "graph",
+) {
   const config = assertConfigured(origin, true)
   const url = new URL(`https://login.microsoftonline.com/${config.tenantId}/oauth2/v2.0/authorize`)
   url.searchParams.set("client_id", config.clientId)
   url.searchParams.set("response_type", "code")
   url.searchParams.set("redirect_uri", config.redirectUri)
   url.searchParams.set("response_mode", "query")
-  url.searchParams.set("scope", scopesText())
+  url.searchParams.set("scope", scopesText(purpose))
   url.searchParams.set("state", state)
-  url.searchParams.set("prompt", "select_account")
+  url.searchParams.set("prompt", purpose === "files" ? "consent" : "select_account")
   return url
 }
 
-export async function exchangeMicrosoftAuthorizationCode(code: string, origin: string) {
+export async function exchangeMicrosoftAuthorizationCode(
+  code: string,
+  origin: string,
+  purpose: MicrosoftAuthorizationPurpose = "graph",
+) {
   const config = assertConfigured(origin, true)
   return requestToken(
     new URLSearchParams({
@@ -323,7 +429,7 @@ export async function exchangeMicrosoftAuthorizationCode(code: string, origin: s
       code,
       grant_type: "authorization_code",
       redirect_uri: config.redirectUri,
-      scope: scopesText(),
+      scope: scopesText(purpose),
     }),
     origin,
   )
@@ -340,23 +446,48 @@ export async function saveMicrosoftConnection(
   userId: string,
   tokenPayload: MicrosoftTokenPayload,
   profile: MicrosoftProfile,
+  purpose: MicrosoftAuthorizationPurpose = "graph",
 ) {
-  if (!tokenPayload.refresh_token) {
+  const admin = createAdminClient()
+  const config = getMicrosoftGraphConfig()
+  const { data: existing, error: existingError } = await admin
+    .from("microsoft_user_connections")
+    .select("microsoft_user_id,microsoft_email,display_name,tenant_id,scopes,refresh_token_encrypted")
+    .eq("user_id", userId)
+    .maybeSingle()
+
+  if (existingError) {
+    throw new Error(existingError.message)
+  }
+
+  const refreshTokenEncrypted = tokenPayload.refresh_token
+    ? encryptRefreshToken(tokenPayload.refresh_token)
+    : existing?.refresh_token_encrypted
+
+  if (!refreshTokenEncrypted) {
     throw new Error("Microsoft no devolvio refresh_token. Revisa el scope offline_access.")
   }
 
-  const admin = createAdminClient()
-  const config = getMicrosoftGraphConfig()
+  const microsoftUserId = profile.id ?? existing?.microsoft_user_id ?? null
+  if (!microsoftUserId) {
+    throw new Error("Microsoft no devolvio identidad de usuario para guardar la conexion.")
+  }
+
+  const scopes = mergeScopes(
+    existing?.scopes ?? null,
+    tokenPayload.scope ?? scopeListForPurpose(purpose),
+  )
+
   const { error } = await admin.from("microsoft_user_connections").upsert(
     {
       user_id: userId,
-      microsoft_user_id: profile.id,
-      microsoft_email: profile.mail ?? profile.userPrincipalName ?? null,
-      display_name: profile.displayName ?? null,
-      tenant_id: config.tenantId,
-      scopes: (tokenPayload.scope ?? scopesText()).split(/\s+/).filter(Boolean),
+      microsoft_user_id: microsoftUserId,
+      microsoft_email: profile.mail ?? profile.userPrincipalName ?? existing?.microsoft_email ?? null,
+      display_name: profile.displayName ?? existing?.display_name ?? null,
+      tenant_id: existing?.tenant_id ?? config.tenantId,
+      scopes,
       status: "connected",
-      refresh_token_encrypted: encryptRefreshToken(tokenPayload.refresh_token),
+      refresh_token_encrypted: refreshTokenEncrypted,
       last_error: null,
       connected_at: new Date().toISOString(),
       last_refreshed_at: new Date().toISOString(),
@@ -467,7 +598,13 @@ export async function getMicrosoftAccessTokenForUser(userId: string) {
         client_secret: config.clientSecret,
         grant_type: "refresh_token",
         refresh_token: decryptRefreshToken(connection.refresh_token_encrypted),
+        scope: scopesText("graph"),
       }),
+    )
+
+    const scopes = mergeScopes(
+      connection.scopes ?? null,
+      token.scope ?? scopeListForPurpose("graph"),
     )
 
     const admin = createAdminClient()
@@ -475,7 +612,7 @@ export async function getMicrosoftAccessTokenForUser(userId: string) {
       .from("microsoft_user_connections")
       .update({
         ...(token.refresh_token ? { refresh_token_encrypted: encryptRefreshToken(token.refresh_token) } : {}),
-        scopes: (token.scope ?? connection.scopes?.join(" ") ?? scopesText()).split(/\s+/).filter(Boolean),
+        scopes,
         status: "connected",
         last_error: null,
         last_refreshed_at: new Date().toISOString(),

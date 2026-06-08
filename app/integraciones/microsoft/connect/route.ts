@@ -1,11 +1,12 @@
 import { randomBytes } from "node:crypto"
 import { NextRequest, NextResponse } from "next/server"
 
-import { buildMicrosoftAuthorizationUrl } from "@/lib/microsoft/graph"
+import { buildMicrosoftAuthorizationUrl, isMicrosoftAuthorizationPurpose } from "@/lib/microsoft/graph"
 import { createClient } from "@/lib/supabase/server"
 
 const STATE_COOKIE = "corteges_ms_oauth_state"
 const NEXT_COOKIE = "corteges_ms_oauth_next"
+const PURPOSE_COOKIE = "corteges_ms_oauth_purpose"
 
 function safeNext(raw: string | null) {
   if (!raw || !raw.startsWith("/") || raw.startsWith("//")) {
@@ -17,6 +18,8 @@ function safeNext(raw: string | null) {
 export async function GET(request: NextRequest) {
   const url = new URL(request.url)
   const next = safeNext(url.searchParams.get("next"))
+  const requestedPurpose = url.searchParams.get("purpose")
+  const purpose = isMicrosoftAuthorizationPurpose(requestedPurpose) ? requestedPurpose : "graph"
   const supabase = await createClient()
   const {
     data: { user },
@@ -27,7 +30,7 @@ export async function GET(request: NextRequest) {
   }
 
   const state = randomBytes(24).toString("base64url")
-  const authUrl = buildMicrosoftAuthorizationUrl(url.origin, state)
+  const authUrl = buildMicrosoftAuthorizationUrl(url.origin, state, purpose)
   const response = NextResponse.redirect(authUrl)
   const cookieOptions = {
     httpOnly: true,
@@ -39,5 +42,6 @@ export async function GET(request: NextRequest) {
 
   response.cookies.set(STATE_COOKIE, state, cookieOptions)
   response.cookies.set(NEXT_COOKIE, next, cookieOptions)
+  response.cookies.set(PURPOSE_COOKIE, purpose, cookieOptions)
   return response
 }
