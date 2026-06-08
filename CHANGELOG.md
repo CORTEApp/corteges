@@ -1,7 +1,7 @@
 # Changelog
 
 ## 2026-06-08
-- Added `/api/health` as a lightweight no-secret health endpoint for Coolify/Codex Control deployment verification.
+- Added `/api/health` as a lightweight no-secret health endpoint for Coolify/Codex Control deployment verification, bypassing the Supabase auth proxy.
 - Hardened expense invoice attachment intake with PDF signature validation, a 20 MB per-file limit, normalized PDF MIME storage, oversized Microsoft attachment skipping, and `nosniff` PDF delivery.
 
 ## 2026-06-07
