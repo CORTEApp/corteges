@@ -3,7 +3,9 @@ import { redirect } from "next/navigation"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { createClient } from "@/lib/supabase/server"
 import { requireAdminAccess } from "@/lib/users/server"
+import { parseDuplicateInvoiceReference } from "@/lib/expenses/invoice-intake/duplicates"
 import type {
+  ExpenseInvoiceDuplicateOrigin,
   ExpenseInvoiceIntakeDetail,
   ExpenseInvoiceIntakeDocument,
   ExpenseInvoiceIntakeEvent,
@@ -12,7 +14,7 @@ import type {
   ExpenseInvoiceIntakeListItem,
   ExpenseInvoiceSupplierTemplate,
 } from "@/lib/expenses/invoice-intake/types"
-import type { ExpenseSupplierOption } from "@/lib/expenses/types"
+import type { ExpenseIndividualDocument, ExpenseIndividualRecord, ExpenseSupplierOption } from "@/lib/expenses/types"
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>
 type UserProfileRow = {
@@ -126,6 +128,76 @@ async function attachEventActorProfiles(events: ExpenseInvoiceIntakeEvent[]) {
   }))
 }
 
+async function resolveDuplicateOrigin(
+  supabase: SupabaseServerClient,
+  item: ExpenseInvoiceIntakeItem,
+): Promise<ExpenseInvoiceDuplicateOrigin | null> {
+  const reference = parseDuplicateInvoiceReference(item.extraction_data)
+
+  if (!reference) {
+    return null
+  }
+
+  const [
+    { data: expenseData, error: expenseError },
+    { data: expenseDocumentData, error: expenseDocumentError },
+    { data: intakeData, error: intakeError },
+    { data: intakeDocumentData, error: intakeDocumentError },
+  ] = await Promise.all([
+    reference.existingExpenseId
+      ? supabase
+          .from("expense_individuals")
+          .select("*")
+          .eq("id", reference.existingExpenseId)
+          .maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
+    reference.existingExpenseId
+      ? supabase
+          .from("expense_individual_documents")
+          .select("*")
+          .eq("expense_id", reference.existingExpenseId)
+          .order("created_at", { ascending: false })
+      : Promise.resolve({ data: [], error: null }),
+    reference.existingIntakeItemId
+      ? supabase
+          .from("expense_invoice_intake_items")
+          .select("*")
+          .eq("id", reference.existingIntakeItemId)
+          .maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
+    reference.existingIntakeItemId
+      ? supabase
+          .from("expense_invoice_intake_documents")
+          .select("*")
+          .eq("item_id", reference.existingIntakeItemId)
+          .order("created_at", { ascending: false })
+      : Promise.resolve({ data: [], error: null }),
+  ])
+
+  if (expenseError) throw expenseError
+  if (expenseDocumentError) throw expenseDocumentError
+  if (intakeError) throw intakeError
+  if (intakeDocumentError) throw intakeDocumentError
+
+  return {
+    checkedAt: reference.checkedAt,
+    existingExpenseId: reference.existingExpenseId,
+    existingIntakeItemId: reference.existingIntakeItemId,
+    expense: expenseData
+      ? {
+          ...(expenseData as ExpenseIndividualRecord),
+          documents: (expenseDocumentData ?? []) as ExpenseIndividualDocument[],
+        }
+      : null,
+    intakeItem: intakeData
+      ? {
+          ...(intakeData as ExpenseInvoiceIntakeItem),
+          documents: (intakeDocumentData ?? []) as ExpenseInvoiceIntakeDocument[],
+        }
+      : null,
+  }
+}
+
 export async function listExpenseInvoiceIntake(filters: ExpenseInvoiceIntakeFilters): Promise<{
   items: ExpenseInvoiceIntakeListItem[]
   suppliers: ExpenseSupplierOption[]
@@ -222,14 +294,19 @@ export async function getExpenseInvoiceIntakeDetail(itemId: string): Promise<Exp
     return null
   }
 
-  const events = await attachEventActorProfiles((eventData ?? []) as ExpenseInvoiceIntakeEvent[])
+  const item = itemData as ExpenseInvoiceIntakeItem
+  const [events, duplicateOrigin] = await Promise.all([
+    attachEventActorProfiles((eventData ?? []) as ExpenseInvoiceIntakeEvent[]),
+    resolveDuplicateOrigin(supabase, item),
+  ])
 
   return {
     user: user.user,
-    item: itemData as ExpenseInvoiceIntakeItem,
+    item,
     documents: (documentData ?? []) as ExpenseInvoiceIntakeDocument[],
     suppliers: (supplierData ?? []) as ExpenseSupplierOption[],
     events,
+    duplicateOrigin,
   }
 }
 

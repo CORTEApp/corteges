@@ -12,7 +12,7 @@
 - microsoft_mail_modules: `billing_crm`
 - fiscal_statistics: `estadisticas_facturacion_csv_ready_remote_verified`
 - expense_individual_deduplication: `supplier_invoice_unique_remote_verified`
-- expense_invoice_intake_duplicates: `hash_and_supplier_invoice_review_ready`
+- expense_invoice_intake_duplicates: `hash_supplier_invoice_origin_viewer_ready`
 - expense_invoice_intake_recognition: `stripe_international_v2_remote_reprocessed`
 - expense_pdf_mail_recovery: `guarded_cron_tool_ready_for_legacy_attachment_gaps`
 - expense_pdf_sharepoint_recovery: `delegated_recovered_29_remaining_5_inventory_best_effort`

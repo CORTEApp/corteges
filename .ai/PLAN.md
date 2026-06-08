@@ -47,3 +47,4 @@
 45. [x] Añadir loader full-screen Atlas para navegacion lenta, login/logout y acciones bloqueantes con umbral de 300 ms.
 46. [x] Mover `Guardar`/`Crear`/`Actualizar` y `Volver` de los footers de formulario a cabeceras de página, sección o card.
 47. [x] Retirar de la UI referencias a SharePoint, `Origen del registro` y trazabilidad técnica de importación.
+48. [x] Añadir visor de duplicidad en `Gastos > Recepcion` con enlace al gasto o recepcion origen y guardado de referencia al detectar duplicados en aprobacion.

@@ -87,6 +87,12 @@
 - `tools/sharepoint_import_expense_individuals.mjs --dry-run` confirma 171 items de `Gastos`, 171 enlaces a proveedor, 168 `N26`, 3 `Caixa`, 119 IVA `0`, 52 IVA `21`, 16 sin `Precio` y 54 descuadres historicos preservados.
 - `supabase/queries/expense_individuals_verification.sql` valida RLS, grants, bucket privado, FK obligatoria a proveedores, unicidad SharePoint y ausencia de tenants.
 
+## Gastos / Recepcion
+- `/gastos/recepcion` muestra recepciones de facturas con filtro por estado, proveedor, origen operativo y busqueda.
+- Las recepciones marcadas como posible duplicado fiscal muestran un visor con la recepcion actual, el gasto individual o recepcion origen, enlaces a los registros y acceso al PDF cuando existe.
+- Si un duplicado fiscal se detecta al aprobar manualmente, la recepcion vuelve a `requiere_revision`, conserva los campos revisados y actualiza la referencia de duplicidad antes de redirigir a la ficha.
+- La referencia de duplicidad se mantiene en `extraction_data.duplicate_invoice` con `existing_expense_id` y/o `existing_intake_item_id`.
+
 ## CRM / Oportunidades
 - La navegacion muestra seccion `CRM` con `Oportunidades`; `/crm` redirige a `/crm/oportunidades`.
 - `/crm/oportunidades` muestra tablero pipeline con tabs `Abiertas` y `Cerradas`.

@@ -6,12 +6,15 @@ import { redirect } from "next/navigation"
 
 import { normalizeCurrencyCode } from "@/lib/currency-options"
 import {
+  EXPENSE_INVOICE_DUPLICATE_REVIEW_MESSAGE,
+  ExpenseInvoiceFiscalDuplicateError,
   approveReviewedIntakeItem,
   findExpenseInvoiceFiscalDuplicate,
   insertExpenseInvoiceIntakeEvent,
   markIntakeAutoApprovalFailure,
   type ReviewedInvoiceValues,
 } from "@/lib/expenses/invoice-intake/approval"
+import { duplicateInvoiceExtractionData } from "@/lib/expenses/invoice-intake/duplicates"
 import { extractPdfText, inferInvoiceDraft } from "@/lib/expenses/invoice-intake/extraction"
 import {
   EXPENSE_INVOICE_INTAKE_MAX_PDF_SIZE_BYTES,
@@ -33,8 +36,6 @@ import { requireAdminAccess } from "@/lib/users/server"
 
 const INTAKE_BUCKET = "expense-invoice-intake"
 const PAYMENT_METHODS = new Set<ExpensePaymentMethod>(["n26", "caixa", "other"])
-const DUPLICATE_INVOICE_REVIEW_MESSAGE =
-  "Posible factura duplicada para este proveedor y numero. Revisa exhaustivamente antes de aprobar."
 
 type AdminClient = ReturnType<typeof createAdminClient>
 type DuplicateSkipReason = "sha256" | "provider_attachment"
@@ -351,18 +352,10 @@ async function createIntakeFromPdf(input: IntakeSourceInput): Promise<IntakeCrea
     const fiscalDuplicate = await findExpenseInvoiceFiscalDuplicate(admin, draft.supplier_id, draft.invoice_number, item.id)
     duplicateInvoice = Boolean(fiscalDuplicate)
     const extractionData = fiscalDuplicate
-      ? {
-          ...draft.extraction_data,
-          duplicate_invoice: {
-            detected: true,
-            checked_at: new Date().toISOString(),
-            existing_expense_id: fiscalDuplicate.expenseId,
-            existing_intake_item_id: fiscalDuplicate.intakeItemId,
-          },
-        }
+      ? duplicateInvoiceExtractionData(draft.extraction_data, fiscalDuplicate)
       : draft.extraction_data
     const lastError = fiscalDuplicate
-      ? [DUPLICATE_INVOICE_REVIEW_MESSAGE, draft.last_error].filter(Boolean).join(" ")
+      ? [EXPENSE_INVOICE_DUPLICATE_REVIEW_MESSAGE, draft.last_error].filter(Boolean).join(" ")
       : draft.last_error ?? null
 
     const { error: updateDocumentError } = await admin
@@ -446,20 +439,24 @@ async function createIntakeFromPdf(input: IntakeSourceInput): Promise<IntakeCrea
           autoApproved: true,
         })
       } catch (error) {
-        const message = error instanceof Error ? error.message : String(error || "No se pudo aprobar automaticamente.")
-        await markIntakeAutoApprovalFailure(admin, {
-          item: {
-            ...item,
-            status: draft.status,
-            supplier_id: draft.supplier_id ?? null,
-            invoice_number: draft.invoice_number ?? null,
-            extraction_data: extractionData,
-          },
-          actorUserId: input.userId,
-          error: message,
-          supplierId: autoValues.supplierId,
-          invoiceNumber: autoValues.invoiceNumber,
-        })
+        if (error instanceof ExpenseInvoiceFiscalDuplicateError) {
+          duplicateInvoice = true
+        } else {
+          const message = error instanceof Error ? error.message : String(error || "No se pudo aprobar automaticamente.")
+          await markIntakeAutoApprovalFailure(admin, {
+            item: {
+              ...item,
+              status: draft.status,
+              supplier_id: draft.supplier_id ?? null,
+              invoice_number: draft.invoice_number ?? null,
+              extraction_data: extractionData,
+            },
+            actorUserId: input.userId,
+            error: message,
+            supplierId: autoValues.supplierId,
+            invoiceNumber: autoValues.invoiceNumber,
+          })
+        }
       }
     }
   } catch (error) {
@@ -659,21 +656,30 @@ export async function approveExpenseInvoiceIntakeAction(formData: FormData) {
   const membership = await requireAdminAccess(`/gastos/recepcion/${itemId}`)
   const admin = createAdminClient()
 
-  await approveReviewedIntakeItem(admin, {
-    itemId,
-    actorUserId: membership.user.id,
-    values: {
-      supplierId: requiredText(formData, "supplier_id"),
-      invoiceNumber: requiredText(formData, "invoice_number"),
-      invoiceDate: requiredText(formData, "invoice_date"),
-      title: requiredText(formData, "title"),
-      netAmount: requiredNumber(formData, "net_amount"),
-      vatRate: requiredNumber(formData, "vat_rate"),
-      currency: currencyValue(formData),
-      paymentMethod: paymentMethodValue(formData),
-      notes: textValue(formData, "review_notes"),
-    },
-  })
+  try {
+    await approveReviewedIntakeItem(admin, {
+      itemId,
+      actorUserId: membership.user.id,
+      values: {
+        supplierId: requiredText(formData, "supplier_id"),
+        invoiceNumber: requiredText(formData, "invoice_number"),
+        invoiceDate: requiredText(formData, "invoice_date"),
+        title: requiredText(formData, "title"),
+        netAmount: requiredNumber(formData, "net_amount"),
+        vatRate: requiredNumber(formData, "vat_rate"),
+        currency: currencyValue(formData),
+        paymentMethod: paymentMethodValue(formData),
+        notes: textValue(formData, "review_notes"),
+      },
+    })
+  } catch (error) {
+    if (error instanceof ExpenseInvoiceFiscalDuplicateError) {
+      revalidateReception(itemId)
+      redirect(`/gastos/recepcion/${itemId}#duplicidad`)
+    }
+
+    throw error
+  }
 
   revalidateReception(itemId)
   redirectToReception()

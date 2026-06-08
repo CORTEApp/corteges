@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto"
 
 import { normalizeCurrencyCode } from "@/lib/currency-options"
 import { calculateInvoiceTotal, roundMoney } from "@/lib/expenses/invoice-intake/amounts"
+import { duplicateInvoiceExtractionData } from "@/lib/expenses/invoice-intake/duplicates"
 import { buildSupplierTemplateRules } from "@/lib/expenses/invoice-intake/extraction"
 import type {
   ExpenseInvoiceIntakeDocument,
@@ -14,12 +15,26 @@ import type { ExpensePaymentMethod } from "@/lib/expenses/types"
 import type { createAdminClient } from "@/lib/supabase/admin"
 
 const EXPENSE_DOCUMENTS_BUCKET = "expense-documents"
+export const EXPENSE_INVOICE_DUPLICATE_REVIEW_MESSAGE =
+  "Posible factura duplicada para este proveedor y numero. Revisa exhaustivamente antes de aprobar."
 
 type AdminClient = ReturnType<typeof createAdminClient>
 
 export type FiscalDuplicateMatch = {
   expenseId: string | null
   intakeItemId: string | null
+}
+
+export class ExpenseInvoiceFiscalDuplicateError extends Error {
+  duplicate: FiscalDuplicateMatch
+
+  constructor(duplicate: FiscalDuplicateMatch) {
+    super(duplicate.expenseId
+      ? "Ya existe un gasto individual para este proveedor y numero de factura."
+      : "Ya existe otra recepcion abierta para este proveedor y numero de factura.")
+    this.name = "ExpenseInvoiceFiscalDuplicateError"
+    this.duplicate = duplicate
+  }
 }
 
 export type ReviewedInvoiceValues = {
@@ -289,6 +304,67 @@ export async function markIntakeAutoApprovalFailure(
   })
 }
 
+function duplicateLastError(current: string | null) {
+  if (current?.includes(EXPENSE_INVOICE_DUPLICATE_REVIEW_MESSAGE)) {
+    return current
+  }
+
+  return [EXPENSE_INVOICE_DUPLICATE_REVIEW_MESSAGE, current].filter(Boolean).join(" ")
+}
+
+async function markIntakeFiscalDuplicateReview(
+  admin: AdminClient,
+  input: {
+    item: ExpenseInvoiceIntakeItem
+    supplier: SupplierApprovalSnapshot
+    actorUserId: string
+    values: ReviewedInvoiceValues
+    totalAmount: number
+    duplicate: FiscalDuplicateMatch
+  },
+) {
+  const { error } = await admin
+    .from("expense_invoice_intake_items")
+    .update({
+      status: "requiere_revision",
+      supplier_id: input.supplier.id,
+      supplier_tax_id: input.supplier.tax_id,
+      supplier_name: input.supplier.name,
+      invoice_number: input.values.invoiceNumber,
+      invoice_date: input.values.invoiceDate,
+      net_amount: roundMoney(input.values.netAmount),
+      vat_rate: roundMoney(input.values.vatRate),
+      total_amount: roundMoney(input.totalAmount),
+      currency: input.values.currency,
+      title: input.values.title,
+      payment_method: input.values.paymentMethod,
+      review_notes: input.values.notes,
+      extraction_data: duplicateInvoiceExtractionData(input.item.extraction_data, input.duplicate),
+      last_error: duplicateLastError(input.item.last_error),
+      updated_by: input.actorUserId,
+    })
+    .eq("id", input.item.id)
+
+  if (error) {
+    throw error
+  }
+
+  await insertExpenseInvoiceIntakeEvent(admin, {
+    itemId: input.item.id,
+    eventType: "duplicate_invoice_detected",
+    fromStatus: input.item.status,
+    toStatus: "requiere_revision",
+    actorUserId: input.actorUserId,
+    payload: {
+      supplier_id: input.supplier.id,
+      invoice_number: input.values.invoiceNumber,
+      existing_expense_id: input.duplicate.expenseId,
+      existing_intake_item_id: input.duplicate.intakeItemId,
+      source: "approval_guard",
+    },
+  })
+}
+
 export async function approveReviewedIntakeItem(
   admin: AdminClient,
   input: {
@@ -341,12 +417,16 @@ export async function approveReviewedIntakeItem(
     throw new Error("Esta factura ya esta aprobada.")
   }
 
-  if (fiscalDuplicate?.expenseId) {
-    throw new Error("Ya existe un gasto individual para este proveedor y numero de factura.")
-  }
-
-  if (fiscalDuplicate?.intakeItemId) {
-    throw new Error("Ya existe otra recepcion abierta para este proveedor y numero de factura.")
+  if (fiscalDuplicate) {
+    await markIntakeFiscalDuplicateReview(admin, {
+      item,
+      supplier,
+      actorUserId: input.actorUserId,
+      values: input.values,
+      totalAmount,
+      duplicate: fiscalDuplicate,
+    })
+    throw new ExpenseInvoiceFiscalDuplicateError(fiscalDuplicate)
   }
 
   if (!document) {

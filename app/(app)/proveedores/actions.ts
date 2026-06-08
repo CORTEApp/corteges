@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 
 import {
+  ExpenseInvoiceFiscalDuplicateError,
   approveReviewedIntakeItem,
   listSupplierAutoApprovalCandidates,
   markIntakeAutoApprovalFailure,
@@ -169,6 +170,10 @@ export async function approveSupplierExtractedInvoicesAction(formData: FormData)
       approved += 1
     } catch (error) {
       failed += 1
+      if (error instanceof ExpenseInvoiceFiscalDuplicateError) {
+        continue
+      }
+
       const message = error instanceof Error ? error.message : String(error || "No se pudo aprobar automaticamente.")
       await markIntakeAutoApprovalFailure(admin, {
         item: candidate.item,

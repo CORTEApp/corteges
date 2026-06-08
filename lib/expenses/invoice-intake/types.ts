@@ -1,5 +1,10 @@
 import type { AppUser } from "@/lib/clients/types"
-import type { ExpensePaymentMethod, ExpenseSupplierOption } from "@/lib/expenses/types"
+import type {
+  ExpenseIndividualDocument,
+  ExpenseIndividualRecord,
+  ExpensePaymentMethod,
+  ExpenseSupplierOption,
+} from "@/lib/expenses/types"
 
 export const EXPENSE_INVOICE_INTAKE_STATUSES = [
   "pendiente",
@@ -105,12 +110,29 @@ export type ExpenseInvoiceIntakeListItem = ExpenseInvoiceIntakeItem & {
   primary_document: ExpenseInvoiceIntakeDocument | null
 }
 
+export type ExpenseInvoiceDuplicateExpenseOrigin = ExpenseIndividualRecord & {
+  documents: ExpenseIndividualDocument[]
+}
+
+export type ExpenseInvoiceDuplicateIntakeOrigin = ExpenseInvoiceIntakeItem & {
+  documents: ExpenseInvoiceIntakeDocument[]
+}
+
+export type ExpenseInvoiceDuplicateOrigin = {
+  checkedAt: string | null
+  existingExpenseId: string | null
+  existingIntakeItemId: string | null
+  expense: ExpenseInvoiceDuplicateExpenseOrigin | null
+  intakeItem: ExpenseInvoiceDuplicateIntakeOrigin | null
+}
+
 export type ExpenseInvoiceIntakeDetail = {
   user: AppUser
   item: ExpenseInvoiceIntakeItem
   documents: ExpenseInvoiceIntakeDocument[]
   suppliers: ExpenseSupplierOption[]
   events: ExpenseInvoiceIntakeEvent[]
+  duplicateOrigin: ExpenseInvoiceDuplicateOrigin | null
 }
 
 export type ExpenseInvoiceIntakeFilters = {

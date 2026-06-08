@@ -151,3 +151,4 @@
 2. La pantalla de suscripciones muestra base e IVA calculados desde precio base, cantidad y porcentaje de IVA para que el total final guardado coincida con la factura recurrente generada.
 3. Las reimportaciones de suscripciones SharePoint ignoran `PrecioTotal` cuando existe facturable enlazado y recomponen el importe desde el precio base canonico.
 4. Cambiar `billing_facturables.unit_price` sincroniza por trigger las suscripciones enlazadas y los candidatos de aprobacion pendientes o fallidos; no reescribe facturas ya emitidas.
+5. `Gastos > Recepcion` mantiene la referencia de duplicidad en `extraction_data.duplicate_invoice` y la resuelve en la ficha como visor operativo; no se introduce migracion nueva mientras el contrato actual de JSON sea suficiente para enlazar el origen.
