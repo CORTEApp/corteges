@@ -1,6 +1,7 @@
 # Changelog
 
 ## 2026-06-08
+- Guarded the Microsoft connect route so missing files-consent configuration redirects cleanly instead of returning HTTP 500.
 - Synced linked subscription totals and pending approval snapshots when a facturable unit price changes.
 - Fixed subscription recurring amount calculation so base, IVA and total are derived from facturable unit price, quantity and VAT rate.
 - Fixed Microsoft/Supabase auth redirects behind Coolify so production flows do not fall back to `localhost:3000`.

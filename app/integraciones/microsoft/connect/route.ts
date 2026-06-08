@@ -32,7 +32,13 @@ export async function GET(request: NextRequest) {
   }
 
   const state = randomBytes(24).toString("base64url")
-  const authUrl = buildMicrosoftAuthorizationUrl(publicOrigin, state, purpose)
+  let authUrl: URL
+  try {
+    authUrl = buildMicrosoftAuthorizationUrl(publicOrigin, state, purpose)
+  } catch {
+    return NextResponse.redirect(new URL("/auth/error", publicOrigin))
+  }
+
   const response = NextResponse.redirect(authUrl)
   const cookieOptions = {
     httpOnly: true,
