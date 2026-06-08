@@ -1,6 +1,7 @@
 # Changelog
 
 ## 2026-06-08
+- Synced linked subscription totals and pending approval snapshots when a facturable unit price changes.
 - Fixed subscription recurring amount calculation so base, IVA and total are derived from facturable unit price, quantity and VAT rate.
 - Fixed Microsoft/Supabase auth redirects behind Coolify so production flows do not fall back to `localhost:3000`.
 - Recalculated billing document base, IVA and total from billing lines during SharePoint import and added an idempotent migration for existing documents.

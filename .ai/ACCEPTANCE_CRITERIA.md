@@ -56,6 +56,7 @@
 - `/facturacion/suscripciones/nuevo`, `/facturacion/suscripciones/[id]` y `/facturacion/suscripciones/[id]/edit` siguen flujo listado -> ficha -> edicion.
 - La ficha muestra snapshot de cliente, CIF, correo, codigo, descripcion, vigencia, cantidad, total recurrente y administracion de baja sin exponer origen tecnico.
 - En alta/edicion de suscripciones, precio base 10 €, cantidad 2 e IVA 21 % calcula base 20 €, IVA 4,20 € y total recurrente 24,20 €.
+- Al editar un Facturable de 10 € a 12 €, una suscripcion enlazada con cantidad 2 e IVA 21 % pasa de 24,20 € a 29,04 € y los candidatos de aprobacion pendientes se recalculan.
 - Finalizar una suscripcion fija `end_date`; no borra fisicamente ni concede `DELETE` a `authenticated`.
 - `tools/sharepoint_import_subscriptions.mjs --dry-run` confirma 10 items de `Suscripciones`.
 - `supabase/queries/billing_subscriptions_verification.sql` valida RLS, grants, unicidad SharePoint y ausencia de tenants/deletes.

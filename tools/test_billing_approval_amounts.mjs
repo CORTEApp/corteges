@@ -90,4 +90,21 @@ assert.deepEqual(
   },
 )
 
+assert.deepEqual(
+  calculateSubscriptionRecurringAmounts({
+    unitPrice: 12,
+    quantity: 2,
+    applyVat: true,
+    vatRate: 21,
+  }),
+  {
+    unitPrice: 12,
+    quantity: 2,
+    vatRate: 21,
+    baseAmount: 24,
+    taxAmount: 5.04,
+    totalAmount: 29.04,
+  },
+)
+
 console.log("Billing approval amount tests passed")

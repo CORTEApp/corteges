@@ -129,6 +129,8 @@ export async function saveFacturableAction(formData: FormData) {
     revalidatePath("/facturacion/facturables")
     revalidatePath(`/facturacion/facturables/${facturableId}`)
     revalidatePath(`/facturacion/facturables/${facturableId}/edit`)
+    revalidatePath("/facturacion/suscripciones")
+    revalidatePath("/facturacion/aprobacion")
     redirect(`/facturacion/facturables/${facturableId}`)
   }
 
