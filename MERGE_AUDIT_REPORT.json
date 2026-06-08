@@ -4,9 +4,9 @@
     "block_count": 19,
     "registry_items": 2,
     "visual_contract": "checked",
-    "visual_runtime_files": 155,
+    "visual_runtime_files": 157,
     "page_routes": 49,
-    "route_handlers": 12,
+    "route_handlers": 14,
     "internal_hrefs": 64
   },
   "issues": [],

@@ -3,6 +3,8 @@ import { createClient } from '@supabase/supabase-js'
 import fs from 'node:fs'
 import path from 'node:path'
 
+import { calculateSubscriptionRecurringAmounts } from '../lib/billing/subscription-amounts.mjs'
+
 const ROOT = process.cwd()
 const DEFAULT_LIST_ID = '0e2a61bb-f831-4b7a-a007-092e49a3c59d'
 const DEFAULT_VAT_RATE = 21
@@ -169,8 +171,13 @@ function mapSubscriptionItem(item, { listId, siteId, clientsByTaxId, facturables
   const client = clientsByTaxId.get(normalizeKey(taxId))
   const facturable = facturablesByCode.get(normalizeKey(subscriptionCode))
   const quantity = parseNumber(values.Cantidad, 1)
-  const fallbackBaseAmount = Number(facturable?.unit_price ?? 0) * quantity
-  const fallbackTotalAmount = Number((fallbackBaseAmount * (1 + DEFAULT_VAT_RATE / 100)).toFixed(4))
+  const recurringAmounts = calculateSubscriptionRecurringAmounts({
+    unitPrice: facturable?.unit_price,
+    quantity,
+    applyVat: true,
+    vatRate: DEFAULT_VAT_RATE,
+  })
+  const fallbackTotalAmount = parseNumber(values.PrecioTotal, 0)
 
   return {
     client_id: client?.id ?? null,
@@ -183,7 +190,9 @@ function mapSubscriptionItem(item, { listId, siteId, clientsByTaxId, facturables
     start_date: parseDate(values.FechaInicio) ?? new Date().toISOString().slice(0, 10),
     end_date: parseDate(values.FechaFin),
     quantity,
-    recurring_total_amount: parseNumber(values.PrecioTotal, fallbackTotalAmount),
+    recurring_total_amount: facturable ? recurringAmounts.totalAmount : fallbackTotalAmount,
+    apply_vat: true,
+    vat_rate: DEFAULT_VAT_RATE,
     currency: 'EUR',
     sharepoint_site_id: siteId,
     sharepoint_list_id: listId,

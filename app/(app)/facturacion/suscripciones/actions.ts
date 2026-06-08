@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 
 import { requireBillingUser } from "@/lib/billing/data"
-import { toNumber } from "@/lib/billing/format"
+import { calculateSubscriptionRecurringAmounts } from "@/lib/billing/subscription-amounts.mjs"
 import { createClient } from "@/lib/supabase/server"
 
 function textValue(formData: FormData, key: string) {
@@ -130,10 +130,13 @@ export async function saveSubscriptionAction(formData: FormData) {
     throw new Error("El porcentaje de IVA debe estar entre 0 y 100.")
   }
 
-  const fallbackBase = roundMoney(toNumber(facturable.unit_price) * quantity)
-  const fallbackTotal = applyVat ? roundMoney(fallbackBase * (1 + vatRate / 100)) : fallbackBase
-  const recurringTotal = numberValue(formData, "recurring_total_amount", fallbackTotal)
-  if (recurringTotal < 0) {
+  const amounts = calculateSubscriptionRecurringAmounts({
+    unitPrice: facturable.unit_price,
+    quantity,
+    applyVat,
+    vatRate,
+  })
+  if (amounts.totalAmount < 0) {
     throw new Error("El total recurrente no puede ser negativo.")
   }
 
@@ -148,9 +151,9 @@ export async function saveSubscriptionAction(formData: FormData) {
     start_date: startDate,
     end_date: endDate,
     quantity,
-    recurring_total_amount: roundMoney(recurringTotal),
+    recurring_total_amount: roundMoney(amounts.totalAmount),
     apply_vat: applyVat,
-    vat_rate: roundMoney(vatRate),
+    vat_rate: roundMoney(amounts.vatRate),
     currency: "EUR",
     updated_by: userId,
   }

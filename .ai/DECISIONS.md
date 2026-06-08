@@ -144,3 +144,9 @@
 1. El `proxy.ts` de Supabase SSR limpia cookies `sb-...-auth-token` solo ante `refresh_token_not_found`; no cambia sesiones validas ni permisos.
 2. La lectura de PDFs desde inbox Microsoft Graph mantiene orden por `receivedDateTime desc`, pero incluye esa propiedad primero en `$filter` para evitar `InefficientFilter`; si Graph sigue rechazando la consulta, reintenta sin filtro y filtra adjuntos en cliente.
 3. Este ajuste es backend/integracion: no se toca UI ni se introduce superficie visual nueva.
+
+## 2026-06-08
+
+1. En `billing_subscriptions`, el total recurrente se calcula desde `billing_facturables.unit_price * quantity` y el IVA configurado de la suscripcion; no se mantiene como importe manual independiente.
+2. La pantalla de suscripciones muestra base e IVA calculados desde precio base, cantidad y porcentaje de IVA para que el total final guardado coincida con la factura recurrente generada.
+3. Las reimportaciones de suscripciones SharePoint ignoran `PrecioTotal` cuando existe facturable enlazado y recomponen el importe desde el precio base canonico.
