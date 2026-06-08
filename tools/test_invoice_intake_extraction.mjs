@@ -40,6 +40,12 @@ const {
   parseDateToIso,
   parseMoney,
 } = require("../lib/expenses/invoice-intake/extraction.ts")
+const {
+  EXPENSE_INVOICE_INTAKE_PDF_MIME_TYPE,
+  hasPdfSignature,
+  isLikelyPdfAttachment,
+  validatePdfBuffer,
+} = require("../lib/expenses/invoice-intake/pdf-validation.ts")
 
 const suppliers = [
   {
@@ -119,5 +125,11 @@ assert.equal(parseDateToIso("Date of issue February 5, 2024"), "2024-02-05")
 assert.equal(parseDateToIso("13 de mayo de 2026"), "2026-05-13")
 assert.equal(parseMoney("$200.00"), 200)
 assert.equal(parseMoney("1.234,56 EUR"), 1234.56)
+assert.equal(EXPENSE_INVOICE_INTAKE_PDF_MIME_TYPE, "application/pdf")
+assert.equal(isLikelyPdfAttachment("factura.pdf", "text/html"), true)
+assert.equal(hasPdfSignature(Buffer.from("%PDF-1.7\n")), true)
+assert.equal(validatePdfBuffer(Buffer.from("%PDF-1.7\n")).ok, true)
+assert.equal(validatePdfBuffer(Buffer.from("<html></html>")).reason, "invalid_signature")
+assert.equal(validatePdfBuffer(Buffer.from("%PDF-1.7\n"), 4).reason, "too_large")
 
 console.log("invoice intake extraction tests passed")

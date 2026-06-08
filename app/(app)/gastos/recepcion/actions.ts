@@ -13,6 +13,12 @@ import {
   type ReviewedInvoiceValues,
 } from "@/lib/expenses/invoice-intake/approval"
 import { extractPdfText, inferInvoiceDraft } from "@/lib/expenses/invoice-intake/extraction"
+import {
+  EXPENSE_INVOICE_INTAKE_MAX_PDF_SIZE_BYTES,
+  EXPENSE_INVOICE_INTAKE_PDF_MIME_TYPE,
+  isLikelyPdfAttachment,
+  validatePdfBuffer,
+} from "@/lib/expenses/invoice-intake/pdf-validation"
 import type { ExpensePaymentMethod, ExpenseSupplierOption } from "@/lib/expenses/types"
 import type {
   ExpenseInvoiceIntakeDocument,
@@ -21,7 +27,7 @@ import type {
   ExtractedInvoiceDraft,
 } from "@/lib/expenses/invoice-intake/types"
 import { getModuleOutbox } from "@/lib/mail/settings"
-import { listMicrosoftPdfMailAttachmentsForUser } from "@/lib/microsoft/graph"
+import { listMicrosoftPdfMailAttachmentsForUserWithStats } from "@/lib/microsoft/graph"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { requireAdminAccess } from "@/lib/users/server"
 
@@ -506,16 +512,25 @@ export async function uploadExpenseInvoiceIntakeAction(formData: FormData) {
 
   for (const rawFile of rawFiles) {
     const fileName = rawFile.name || "factura.pdf"
-    if (!fileName.toLowerCase().endsWith(".pdf") && rawFile.type !== "application/pdf") {
+    if (
+      !isLikelyPdfAttachment(fileName, rawFile.type) ||
+      rawFile.size > EXPENSE_INVOICE_INTAKE_MAX_PDF_SIZE_BYTES
+    ) {
       skippedInvalidFormat += 1
       continue
     }
 
     const buffer = Buffer.from(await rawFile.arrayBuffer())
+    const validation = validatePdfBuffer(buffer)
+    if (!validation.ok) {
+      skippedInvalidFormat += 1
+      continue
+    }
+
     const result = await createIntakeFromPdf({
       sourceKind: "upload",
       fileName,
-      mimeType: rawFile.type || "application/pdf",
+      mimeType: EXPENSE_INVOICE_INTAKE_PDF_MIME_TYPE,
       buffer,
       userId: membership.user.id,
       suppliers: context.suppliers,
@@ -540,22 +555,31 @@ export async function importExpenseInvoiceEmailAction(formData: FormData) {
   const membership = await requireAdminAccess("/gastos/recepcion")
   const source = await resolveEmailImportSource(membership.user.id, formData)
   const maxMessages = Math.min(Math.max(numberValue(formData, "max_messages") ?? 25, 1), 50)
-  const attachments = await listMicrosoftPdfMailAttachmentsForUser(source.connectionUserId, {
+  const attachmentResult = await listMicrosoftPdfMailAttachmentsForUserWithStats(source.connectionUserId, {
     mailboxEmail: source.mailboxEmail,
     maxMessages,
+    maxAttachmentBytes: EXPENSE_INVOICE_INTAKE_MAX_PDF_SIZE_BYTES,
   })
+  const attachments = attachmentResult.attachments
   const admin = createAdminClient()
   const context = await loadExtractionContext(admin)
   let created = 0
+  let skippedInvalidFormat = attachmentResult.skippedOversized
   let duplicateHashCount = 0
   let duplicateInvoiceCount = 0
 
   for (const attachment of attachments) {
     const buffer = Buffer.from(attachment.contentBytes, "base64")
+    const validation = validatePdfBuffer(buffer)
+    if (!validation.ok) {
+      skippedInvalidFormat += 1
+      continue
+    }
+
     const result = await createIntakeFromPdf({
       sourceKind: "email",
       fileName: attachment.name,
-      mimeType: attachment.contentType || "application/pdf",
+      mimeType: EXPENSE_INVOICE_INTAKE_PDF_MIME_TYPE,
       buffer,
       userId: membership.user.id,
       provider: "microsoft_graph",
@@ -578,6 +602,7 @@ export async function importExpenseInvoiceEmailAction(formData: FormData) {
   revalidateReception()
   redirectToReception({
     imported: created,
+    skipped: skippedInvalidFormat,
     duplicateHash: duplicateHashCount,
     duplicateInvoice: duplicateInvoiceCount,
     scanned: attachments.length,

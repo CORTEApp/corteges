@@ -1,5 +1,8 @@
 # Changelog
 
+## 2026-06-08
+- Hardened expense invoice attachment intake with PDF signature validation, a 20 MB per-file limit, normalized PDF MIME storage, oversized Microsoft attachment skipping, and `nosniff` PDF delivery.
+
 ## 2026-06-07
 - Handled revoked Supabase SSR refresh-token cookies in `proxy.ts` to avoid production `refresh_token_not_found` runtime logs.
 - Adjusted Microsoft Graph inbox PDF import query to satisfy message `$filter`/`$orderby` constraints and added a defensive fallback.

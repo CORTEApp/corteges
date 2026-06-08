@@ -118,6 +118,11 @@ export type MicrosoftMailPdfAttachment = {
   contentBytes: string
 }
 
+export type MicrosoftMailPdfAttachmentListResult = {
+  attachments: MicrosoftMailPdfAttachment[]
+  skippedOversized: number
+}
+
 type GraphCollection<T> = {
   value?: T[]
 }
@@ -642,13 +647,22 @@ async function listRecentInboxMessages(
 
 export async function listMicrosoftPdfMailAttachmentsForUser(
   userId: string,
-  input: { mailboxEmail?: string | null; maxMessages?: number } = {},
+  input: { mailboxEmail?: string | null; maxMessages?: number; maxAttachmentBytes?: number } = {},
 ): Promise<MicrosoftMailPdfAttachment[]> {
+  const result = await listMicrosoftPdfMailAttachmentsForUserWithStats(userId, input)
+  return result.attachments
+}
+
+export async function listMicrosoftPdfMailAttachmentsForUserWithStats(
+  userId: string,
+  input: { mailboxEmail?: string | null; maxMessages?: number; maxAttachmentBytes?: number } = {},
+): Promise<MicrosoftMailPdfAttachmentListResult> {
   const accessToken = await getMicrosoftAccessTokenForUser(userId)
   const top = Math.min(Math.max(input.maxMessages ?? 25, 1), 50)
   const basePath = mailboxBasePath(input.mailboxEmail)
   const messages = await listRecentInboxMessages(accessToken, basePath, top)
-  const results: MicrosoftMailPdfAttachment[] = []
+  const attachments: MicrosoftMailPdfAttachment[] = []
+  let skippedOversized = 0
 
   for (const message of messages.value ?? []) {
     if (!message.id || message.hasAttachments === false) {
@@ -658,13 +672,22 @@ export async function listMicrosoftPdfMailAttachmentsForUser(
     const attachmentParams = new URLSearchParams({
       "$select": "id,name,contentType,size,isInline",
     })
-    const attachments = await graphFetch<GraphCollection<GraphFileAttachment>>(
+    const messageAttachments = await graphFetch<GraphCollection<GraphFileAttachment>>(
       accessToken,
       `${basePath}/messages/${encodeURIComponent(message.id)}/attachments?${attachmentParams.toString()}`,
     )
 
-    for (const attachment of attachments.value ?? []) {
+    for (const attachment of messageAttachments.value ?? []) {
       if (!attachment.id || !isPdfAttachment(attachment)) {
+        continue
+      }
+
+      if (
+        input.maxAttachmentBytes != null &&
+        attachment.size != null &&
+        attachment.size > input.maxAttachmentBytes
+      ) {
+        skippedOversized += 1
         continue
       }
 
@@ -679,7 +702,7 @@ export async function listMicrosoftPdfMailAttachmentsForUser(
         continue
       }
 
-      results.push({
+      attachments.push({
         mailboxEmail: input.mailboxEmail?.trim() || null,
         messageId: message.id,
         attachmentId: fileAttachment.id ?? attachment.id,
@@ -695,7 +718,10 @@ export async function listMicrosoftPdfMailAttachmentsForUser(
     }
   }
 
-  return results
+  return {
+    attachments,
+    skippedOversized,
+  }
 }
 
 function mailRecipient(recipient: MicrosoftMailRecipient) {
