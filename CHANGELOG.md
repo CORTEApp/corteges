@@ -1,6 +1,7 @@
 # Changelog
 
 ## 2026-06-08
+- Refined the expense duplicate-origin viewer layout so the related origin and PDF preview use the available width cleanly.
 - Added a duplicate-origin viewer to expense invoice intake so duplicate reviews link back to the matching expense or reception document.
 - Allowed SharePoint expense PDF recovery to continue when auxiliary `sharepoint_import.binary_files` REST writes are unavailable.
 - Guarded the Microsoft connect route so missing files-consent configuration redirects cleanly instead of returning HTTP 500.

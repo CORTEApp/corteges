@@ -322,7 +322,7 @@ function DuplicateOriginViewer({
           transactionDate={currentItem.invoice_date}
         />
 
-        <div className="grid gap-3 xl:grid-cols-2">
+        <div className="grid gap-3">
           {origin.expense ? (
             <DuplicateSummaryCard
               badge={<Badge tone="info">Gasto individual</Badge>}
@@ -444,7 +444,7 @@ function DuplicateSummaryCard({
           <iframe
             title={`Visor de duplicidad de ${documentName}`}
             src={documentHref}
-            className="h-[22rem] w-full border-0 bg-white"
+            className="h-[26rem] w-full border-0 bg-white"
           />
         </div>
       ) : null}
